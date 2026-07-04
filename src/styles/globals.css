@@ -1,6 +1,48 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif,
-    "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  /* Nasze wiedźmińskie kolory */
+  --color-witch-bg: #0f0a18;
+  --color-witch-card: #1d142e;
+  --color-witch-primary: #8b5cf6;
+  --color-witch-gold: #d4af37;
+
+  /* Animacje przełożone na v4 */
+  --animate-pop-up: popUp 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  --animate-slide-in: slideIn 250ms ease;
+}
+
+/* Definicje Keyframes */
+@keyframes popUp {
+  0% { transform: scale(0); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes slideIn {
+  0% { transform: translateX(-100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+@layer base {
+  body {
+    background-color: var(--color-witch-bg);
+    color: #e5e7eb;
+  }
+
+  *:focus {
+    outline: none;
+  }
+
+  /* Ukrywanie autofill z Twojego starego projektu */
+  input::-webkit-inner-spin-button,
+  input::-webkit-outer-spin-button {
+    appearance: none;
+  }
+
+  input:-webkit-autofill,
+  input:-webkit-autofill:hover,
+  input:-webkit-autofill:active {
+    transition: background-color 5000s ease-in-out 0s;
+    box-shadow: 0 0 0px 1000px rgba(139, 92, 246, 0.1) inset, 0 0 0 1px #d4d4d8;
+  }
 }
