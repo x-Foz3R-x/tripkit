@@ -68,6 +68,8 @@ export default function FinancesPage() {
     setIsLoading(false);
   };
 
+  const isFinanceEnabled = env.NEXT_PUBLIC_FINANCE_ENABLED === "true";
+
   useEffect(() => {
     const storedUserId = localStorage.getItem("tripkit_user_id");
     if (storedUserId) setActiveUserId(storedUserId);
@@ -81,6 +83,28 @@ export default function FinancesPage() {
   );
 
   if (!mounted) return null;
+
+  if (!isFinanceEnabled) {
+    return (
+      <div className="animate-fade-in flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+        <div className="bg-theme-card text-theme-muted flex h-16 w-16 items-center justify-center rounded-full border border-white/5 shadow-sm">
+          <Lock size={28} />
+        </div>
+        <div>
+          <h2 className="font-heading text-theme-text mb-2 text-3xl font-semibold">
+            Kociołek zamknięty
+          </h2>
+          <p className="font-body text-theme-muted mx-auto mb-6 max-w-64 text-sm">
+            Kociołek jest tymczasowo zamknięty. Uruchomimy wspólne rozliczenia, gdy tylko zaczniemy
+            przygodę.
+          </p>
+          <Link.Arrow href="/" variant="primary" size="base">
+            Wróć do Bazy
+          </Link.Arrow>
+        </div>
+      </div>
+    );
+  }
 
   if (!activeUserId) {
     return (

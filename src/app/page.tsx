@@ -1,6 +1,5 @@
 "use client";
 
-import { Compass } from "lucide-react";
 import { WelcomeCard } from "~/components/modules/hub/welcome-card";
 import { PlaylistCard } from "~/components/modules/hub/playlist-card";
 
@@ -9,16 +8,7 @@ export default function HomePage() {
 
   return (
     <div className="animate-fade-in flex flex-col gap-8">
-      {/* Czysty, wyeksponowany Header z Twoimi fontami */}
       <header className="flex flex-col gap-2 pt-4 pb-2">
-        <div className="flex items-center gap-1.5 opacity-90">
-          <Compass size={16} className="text-theme-primary" />
-          <span className="font-body text-theme-primary text-xs font-bold tracking-widest uppercase">
-            TripKit
-          </span>
-        </div>
-
-        {/* Potężny, stylizowany tytuł z Nerko One */}
         <h1 className="font-heading mt-1 mb-2 text-[3.5rem] leading-none tracking-wide text-white drop-shadow-sm">
           {tripName}
         </h1>
