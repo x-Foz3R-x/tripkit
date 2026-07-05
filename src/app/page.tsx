@@ -1,37 +1,52 @@
-import Link from "next/link";
+"use client";
+
+import { Compass } from "lucide-react";
+import { WelcomeCard } from "~/components/modules/hub/welcome-card";
+import { PlaylistCard } from "~/components/modules/hub/playlist-card";
 
 export default function HomePage() {
+  const tripName = "Stężyca 2026";
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c] text-white">
-      <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
-        <h1 className="text-5xl font-extrabold tracking-tight text-white sm:text-[5rem]">
-          Create <span className="text-[hsl(280,100%,70%)]">T3</span> App
-        </h1>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:gap-8">
-          <Link
-            className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 text-white hover:bg-white/20"
-            href="https://create.t3.gg/en/usage/first-steps"
-            target="_blank"
-          >
-            <h3 className="text-2xl font-bold">First Steps →</h3>
-            <div className="text-lg">
-              Just the basics - Everything you need to know to set up your
-              database and authentication.
-            </div>
-          </Link>
-          <Link
-            className="flex max-w-xs flex-col gap-4 rounded-xl bg-white/10 p-4 text-white hover:bg-white/20"
-            href="https://create.t3.gg/en/introduction"
-            target="_blank"
-          >
-            <h3 className="text-2xl font-bold">Documentation →</h3>
-            <div className="text-lg">
-              Learn more about Create T3 App, the libraries it uses, and how to
-              deploy it.
-            </div>
-          </Link>
+    <div className="animate-fade-in flex flex-col gap-8">
+      {/* Czysty, wyeksponowany Header z Twoimi fontami */}
+      <header className="flex flex-col gap-2 pt-4 pb-2">
+        <div className="flex items-center gap-1.5 opacity-90">
+          <Compass size={16} className="text-theme-primary" />
+          <span className="font-body text-theme-primary text-xs font-bold tracking-widest uppercase">
+            TripKit
+          </span>
         </div>
-      </div>
-    </main>
+
+        {/* Potężny, stylizowany tytuł z Nerko One */}
+        <h1 className="font-heading mt-1 mb-2 text-[3.5rem] leading-none tracking-wide text-white drop-shadow-sm">
+          {tripName}
+        </h1>
+
+        <div className="from-theme-primary/60 h-px w-1/4 bg-linear-to-r to-transparent" />
+      </header>
+
+      {/* Kontener modułów Huba */}
+      <section className="flex flex-col gap-5">
+        <WelcomeCard />
+
+        {/* Moduł Aktualności z wykorzystaniem Libertinus Mono */}
+        <div className="bg-theme-card flex flex-col justify-center rounded-2xl border border-white/5 p-6 shadow-sm">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="font-body font-semibold text-white/90">Aktualności</p>
+            {/* Wykorzystanie Twojego mono fontu do technicznego akcentu */}
+            <span className="text-theme-primary bg-theme-primary/10 rounded-full px-2 py-0.5 font-mono text-[10px] uppercase">
+              Moduł Beta
+            </span>
+          </div>
+          <p className="font-body text-theme-muted text-sm">
+            Tutaj w przyszłości pojawią się najważniejsze powiadomienia (np. nierozliczone wydatki i
+            zmiany w harmonogramie).
+          </p>
+        </div>
+
+        <PlaylistCard />
+      </section>
+    </div>
   );
 }

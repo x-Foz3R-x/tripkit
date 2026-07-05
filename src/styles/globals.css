@@ -1,39 +1,57 @@
 @import "tailwindcss";
 
 @theme {
-  /* Nasze wiedźmińskie kolory */
-  --color-witch-bg: #0f0a18;
-  --color-witch-card: #1d142e;
-  --color-witch-primary: #8b5cf6;
-  --color-witch-gold: #d4af37;
+  /* Typografia */
+  --font-heading: var(--font-heading), display;
+  --font-body: var(--font-body), sans-serif;
+  --font-mono: var(--font-mono), monospace;
 
-  /* Animacje przełożone na v4 */
-  --animate-pop-up: popUp 400ms cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  --animate-slide-in: slideIn 250ms ease;
+  /* Zmienne Motywu */
+  --color-theme-bg: var(--theme-bg);
+  --color-theme-card: var(--theme-card);
+  --color-theme-primary: var(--theme-primary);
+  --color-theme-accent: var(--theme-accent);
+  --color-theme-text: var(--theme-text);
+  --color-theme-muted: var(--theme-muted);
+
+  /* Animacje */
+  --animate-fade-in: fadeIn 0.4s ease-out;
 }
 
-/* Definicje Keyframes */
-@keyframes popUp {
-  0% { transform: scale(0); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-@keyframes slideIn {
-  0% { transform: translateX(-100%); opacity: 0; }
-  100% { transform: translateX(0); opacity: 1; }
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @layer base {
+  :root {
+    /* Mroczne tło, ale bez przesady */
+    --theme-bg: #0b0713;
+    --theme-card: #150d24;
+
+    /* Fiolety i odcienie */
+    --theme-primary: #8b5cf6;
+    --theme-accent: #f59e0b;
+    --theme-text: #f3f4f6;
+    --theme-muted: #9ca3af;
+  }
+
   body {
-    background-color: var(--color-witch-bg);
-    color: #e5e7eb;
+    background-color: var(--theme-bg);
+    color: var(--theme-text);
+    font-family: var(--font-body);
   }
 
   *:focus {
     outline: none;
   }
 
-  /* Ukrywanie autofill z Twojego starego projektu */
   input::-webkit-inner-spin-button,
   input::-webkit-outer-spin-button {
     appearance: none;
@@ -43,6 +61,12 @@
   input:-webkit-autofill:hover,
   input:-webkit-autofill:active {
     transition: background-color 5000s ease-in-out 0s;
-    box-shadow: 0 0 0px 1000px rgba(139, 92, 246, 0.1) inset, 0 0 0 1px #d4d4d8;
+    box-shadow:
+      0 0 0px 1000px rgba(139, 92, 246, 0.1) inset,
+      0 0 0 1px rgba(139, 92, 246, 0.3);
   }
+}
+
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
 }
