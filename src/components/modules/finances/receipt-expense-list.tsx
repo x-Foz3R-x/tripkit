@@ -79,8 +79,6 @@ export const ReceiptExpenseList = memo(function ReceiptExpenseList({
                 <span className="text-[14px] font-bold text-white">
                   {Number(expense.amount).toFixed(2)}
                 </span>
-
-                <span className="text-theme-muted text-[11px]">{isAll ? "A" : "B"}</span>
               </div>
             </div>
 

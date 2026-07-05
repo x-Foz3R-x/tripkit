@@ -40,25 +40,14 @@ export const ExpenseReceipt = memo(function ExpenseReceipt({
 
   const settlements = useMemo(() => expenses.filter(isSettlementEntry), [expenses]);
 
-  const totalTripCost = useMemo(
+  const totalCost = useMemo(
     () => regularExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0),
     [regularExpenses],
   );
 
-  const groupTotal = useMemo(
-    () =>
-      regularExpenses
-        .filter((expense) => expense.split_among.length === users.length)
-        .reduce((sum, expense) => sum + Number(expense.amount), 0),
-    [regularExpenses, users.length],
-  );
-
-  const partialTotal = useMemo(
-    () =>
-      regularExpenses
-        .filter((expense) => expense.split_among.length !== users.length)
-        .reduce((sum, expense) => sum + Number(expense.amount), 0),
-    [regularExpenses, users.length],
+  const totalSettled = useMemo(
+    () => settlements.reduce((sum, expense) => sum + Number(expense.amount), 0),
+    [settlements],
   );
 
   const tripIdShort = env.NEXT_PUBLIC_TRIP_ID.split("-")[0]?.toUpperCase() ?? "01103";
@@ -77,12 +66,7 @@ export const ExpenseReceipt = memo(function ExpenseReceipt({
 
       <ReceiptExpenseList expenses={regularExpenses} users={users} />
 
-      <ReceiptSummary
-        hasExpenses={regularExpenses.length > 0}
-        groupTotal={groupTotal}
-        partialTotal={partialTotal}
-        totalTripCost={totalTripCost}
-      />
+      <ReceiptSummary totalSettled={totalSettled} totalCost={totalCost} />
 
       <ReceiptPaymentSection
         settlements={settlements}

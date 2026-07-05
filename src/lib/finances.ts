@@ -1,20 +1,12 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
+// src/lib/finances.ts
 import type { Database } from "~/types/database";
 
-type Expense = Database["public"]["Tables"]["expenses"]["Row"];
+// 1. Zrównujemy FinanceExpense IDEALNIE 1:1 z wierszem z bazy danych. Żadnych mutacji.
+export type FinanceExpense = Database["public"]["Tables"]["expenses"]["Row"];
 export type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
 
 export type SettlementStatus = "pending" | "confirmed" | "rejected";
-
-// ✅ Czyste nadpisanie typów. Wywalamy konfliktowe pola, wstawiamy własne.
-// (string & {}) sprawia, że TS przyjmie dane z bazy bez błędów,
-// a my wciąż mamy autouzupełnianie np. "expense" | "settlement".
-export type FinanceExpense = Omit<Expense, "entry_type" | "settlement_status"> & {
-  entry_type: "expense" | "settlement" | (string & {});
-  settlement_status: SettlementStatus | (string & {}) | null;
-};
 
 export interface Transaction {
   from: string;
@@ -24,37 +16,34 @@ export interface Transaction {
 
 const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
 
-const isLegacySettlement = (expense: FinanceExpense) =>
+const isLegacySettlement = (expense: FinanceExpense): boolean =>
   expense.description.trim().toLowerCase() === "spłata długu";
 
-export const isSettlementEntry = (expense: FinanceExpense) =>
+// 2. Dodajemy precyzyjne typy zwracane, żeby ESLint i TS były szczęśliwe
+export const isSettlementEntry = (expense: FinanceExpense): boolean =>
   expense.entry_type === "settlement" || (!expense.entry_type && isLegacySettlement(expense));
 
-export const getSettlementRecipientId = (expense: FinanceExpense) =>
+export const getSettlementRecipientId = (expense: FinanceExpense): string | null =>
   expense.settlement_recipient_id ?? expense.split_among[0] ?? null;
 
 export const getSettlementStatus = (expense: FinanceExpense): SettlementStatus | null => {
   if (!isSettlementEntry(expense)) return null;
+  // Baza trzyma status jako generyczny string, więc upewniamy nasz kod, że to SettlementStatus
   return (expense.settlement_status as SettlementStatus) ?? "confirmed";
 };
 
 function calculateTransactions(balances: Record<string, number>): Transaction[] {
   const debtors = Object.entries(balances)
     .filter(([, balance]) => balance < -0.009)
-    .map(([id, balance]) => ({
-      id,
-      amount: roundMoney(-balance),
-    }));
+    .map(([id, balance]) => ({ id, amount: Math.abs(balance) }))
+    .sort((a, b) => b.amount - a.amount);
 
   const creditors = Object.entries(balances)
     .filter(([, balance]) => balance > 0.009)
-    .map(([id, balance]) => ({
-      id,
-      amount: roundMoney(balance),
-    }));
+    .map(([id, balance]) => ({ id, amount: balance }))
+    .sort((a, b) => b.amount - a.amount);
 
   const transactions: Transaction[] = [];
-
   let debtorIndex = 0;
   let creditorIndex = 0;
 
@@ -99,7 +88,6 @@ export function calculateFinances(expenses: FinanceExpense[], users: User[]) {
       if (!recipientId || settlementStatus !== "confirmed") continue;
 
       balances[expense.user_id] = roundMoney((balances[expense.user_id] ?? 0) + amount);
-
       balances[recipientId] = roundMoney((balances[recipientId] ?? 0) - amount);
 
       continue;
@@ -122,8 +110,5 @@ export function calculateFinances(expenses: FinanceExpense[], users: User[]) {
     Object.entries(balances).map(([id, balance]) => [id, roundMoney(balance)]),
   );
 
-  return {
-    balances: roundedBalances,
-    transactions: calculateTransactions(roundedBalances),
-  };
+  return { balances: roundedBalances, transactions: calculateTransactions(roundedBalances) };
 }
