@@ -27,12 +27,6 @@ export const ReceiptFooter = memo(function ReceiptFooter({ tripIdShort }: Receip
           żadnej złotówki
         </span>
 
-        <span className="text-theme-muted mt-1 text-[9px] leading-tight font-normal tracking-tighter uppercase">
-          (I to nie tylko tych za alko
-          <br />
-          ale absolutnie za wszystkie zakupy)
-        </span>
-
         <span className="border-theme-primary text-theme-primary mx-auto mt-4 inline-block border-b pb-1 text-[15px] uppercase">
           Skarbiec pamięta
         </span>

@@ -56,7 +56,7 @@ export function DrawerDialog({
           <DrawerTitle>{title}</DrawerTitle>
           {description && <DrawerDescription>{description}</DrawerDescription>}
         </DrawerHeader>
-        <div className="max-h-[70dvh] overflow-y-auto px-4 pb-6">{children}</div>
+        <div className="max-h-[70dvh] overflow-y-auto p-6">{children}</div>
       </DrawerContent>
     </Drawer>
   );

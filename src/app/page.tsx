@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Navigation, CalendarClock, CloudSun } from "lucide-react";
+import { MapPin, Navigation } from "lucide-react";
 import { WelcomeCard } from "~/components/modules/hub/welcome-card";
 import { PlaylistCard } from "~/components/modules/hub/playlist-card";
 import { TodaySchedule } from "~/components/modules/hub/today-schedule";
@@ -41,26 +41,6 @@ export default function HomePage() {
               <Navigation size={18} className="mr-0.5" />
             </div>
           </a>
-
-          <div className="bg-theme-card col-span-1 flex flex-col gap-3 rounded-2xl border border-white/5 p-4 shadow-sm">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
-              <CalendarClock size={20} />
-            </div>
-            <div className="mt-1 flex flex-col">
-              <span className="font-body text-theme-muted mb-0.5 text-xs">Start wyjazdu</span>
-              <span className="font-body text-theme-text text-sm font-bold">Wtorek, 8:00</span>
-            </div>
-          </div>
-
-          <div className="bg-theme-card col-span-1 flex flex-col gap-3 rounded-2xl border border-white/5 p-4 shadow-sm">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/10 text-amber-400">
-              <CloudSun size={20} />
-            </div>
-            <div className="mt-1 flex flex-col">
-              <span className="font-body text-theme-muted mb-0.5 text-xs">Prognoza</span>
-              <span className="font-body text-theme-text text-sm font-bold">Deszcz i słońce</span>
-            </div>
-          </div>
         </div>
 
         <TodaySchedule />
