@@ -50,12 +50,14 @@ export function DrawerDialog({
   }
 
   return (
-    <Drawer open={isOpen} onOpenChange={setIsOpen}>
+    <Drawer open={isOpen} onOpenChange={setIsOpen} showSwipeHandle>
       <DrawerContent className="bg-theme-bg pb-safe border-t border-white/10 text-white">
-        <DrawerHeader className="text-left">
-          <DrawerTitle>{title}</DrawerTitle>
-          {description && <DrawerDescription>{description}</DrawerDescription>}
-        </DrawerHeader>
+        {(title ?? description) && (
+          <DrawerHeader className="text-left">
+            {title && <DrawerTitle>{title}</DrawerTitle>}
+            {description && <DrawerDescription>{description}</DrawerDescription>}
+          </DrawerHeader>
+        )}
         <div className="max-h-[70dvh] overflow-y-auto p-6">{children}</div>
       </DrawerContent>
     </Drawer>
