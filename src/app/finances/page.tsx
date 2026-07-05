@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Lock } from "lucide-react";
 import { supabase } from "~/lib/supabase";
 import { env } from "~/env";
-import { ResponsiveModal } from "~/components/responsive-modal";
+import { DrawerDialog } from "~/components/responsive-dialog";
 import { ExpenseForm } from "~/components/modules/finances/receipt-form";
 import { calculateFinances, type FinanceExpense } from "~/lib/finances";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -205,9 +205,9 @@ export default function FinancesPage() {
         </>
       )}
 
-      <ResponsiveModal isOpen={isModalOpen} setIsOpen={setIsModalOpen}>
+      <DrawerDialog isOpen={isModalOpen} setIsOpen={setIsModalOpen}>
         <ExpenseForm users={users} activeUserId={activeUserId} onSuccess={handleExpenseSuccess} />
-      </ResponsiveModal>
+      </DrawerDialog>
     </div>
   );
 }

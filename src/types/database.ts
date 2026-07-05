@@ -20,7 +20,12 @@ export type Database = {
           created_at: string | null
           date: string | null
           description: string
+          entry_type: string
           id: string
+          settlement_confirmed_at: string | null
+          settlement_confirmed_by: string | null
+          settlement_recipient_id: string | null
+          settlement_status: string | null
           split_among: string[]
           trip_id: string
           updated_at: string | null
@@ -31,7 +36,12 @@ export type Database = {
           created_at?: string | null
           date?: string | null
           description: string
+          entry_type?: string
           id?: string
+          settlement_confirmed_at?: string | null
+          settlement_confirmed_by?: string | null
+          settlement_recipient_id?: string | null
+          settlement_status?: string | null
           split_among: string[]
           trip_id: string
           updated_at?: string | null
@@ -42,7 +52,12 @@ export type Database = {
           created_at?: string | null
           date?: string | null
           description?: string
+          entry_type?: string
           id?: string
+          settlement_confirmed_at?: string | null
+          settlement_confirmed_by?: string | null
+          settlement_recipient_id?: string | null
+          settlement_status?: string | null
           split_among?: string[]
           trip_id?: string
           updated_at?: string | null
@@ -52,6 +67,20 @@ export type Database = {
           {
             foreignKeyName: "expenses_payer_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_settlement_confirmed_by_fkey"
+            columns: ["settlement_confirmed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_settlement_recipient_id_fkey"
+            columns: ["settlement_recipient_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
