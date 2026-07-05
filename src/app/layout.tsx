@@ -23,6 +23,9 @@ const fontMono = Inconsolata({
 export const metadata: Metadata = {
   title: "TripKit",
   description: "Baza wyjazdu i organizacja w jednym miejscu.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
