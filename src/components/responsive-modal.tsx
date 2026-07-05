@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import { useEffect, useState } from "react";
 import { useMediaQuery } from "~/hooks/use-media-query";
 import {
   Dialog,
@@ -9,13 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "~/components/ui/drawer";
+import { Drawer, DrawerContent, DrawerDescription, DrawerTitle } from "~/components/ui/drawer";
 
 interface ResponsiveModalProps {
   isOpen: boolean;
@@ -25,6 +19,8 @@ interface ResponsiveModalProps {
   children: React.ReactNode;
 }
 
+const EXIT_ANIMATION_MS = 260;
+
 export function ResponsiveModal({
   isOpen,
   setIsOpen,
@@ -33,17 +29,38 @@ export function ResponsiveModal({
   children,
 }: ResponsiveModalProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
+  const [shouldRender, setShouldRender] = useState(isOpen);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShouldRender(true);
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      setShouldRender(false);
+    }, EXIT_ANIMATION_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [isOpen]);
+
+  if (!shouldRender) return null;
+
+  const accessibleTitle = title ?? "Dodaj wydatek";
+  const accessibleDescription = description ?? "Formularz dodawania nowego wydatku.";
 
   if (isDesktop) {
     return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="bg-theme-bg/50 text-white outline-0 outline-none sm:max-w-106.25">
-          <DialogHeader>
-            <DialogTitle className="text-xl">{title}</DialogTitle>
-            <DialogDescription className={description ? "text-theme-muted" : "sr-only"}>
-              {description ?? title}
-            </DialogDescription>
+        <DialogContent
+          showCloseButton={false}
+          className="bg-theme-bg text-theme-text border-white/10 p-5 sm:max-w-lg"
+        >
+          <DialogHeader className="sr-only">
+            <DialogTitle>{accessibleTitle}</DialogTitle>
+            <DialogDescription>{accessibleDescription}</DialogDescription>
           </DialogHeader>
+
           {children}
         </DialogContent>
       </Dialog>
@@ -51,18 +68,14 @@ export function ResponsiveModal({
   }
 
   return (
-    <Drawer open={isOpen} onOpenChange={setIsOpen}>
-      <DrawerContent className="bg-theme-bg/50 pb-safe border-t border-white/10 text-white">
-        <div className="mx-auto mt-2 mb-4 h-1 w-12 rounded-full bg-white/20" />
+    <Drawer open={isOpen} onOpenChange={setIsOpen} showSwipeHandle swipeDirection="down">
+      <DrawerContent className="bg-theme-bg text-theme-text max-h-[calc(100dvh-1rem)]! rounded-t-3xl! border-white/10 duration-250!">
+        <DrawerTitle className="sr-only">{accessibleTitle}</DrawerTitle>
+        <DrawerDescription className="sr-only">{accessibleDescription}</DrawerDescription>
 
-        <DrawerHeader className="text-left">
-          <DrawerTitle className="text-xl">{title}</DrawerTitle>
-          <DrawerDescription className={description ? "text-theme-muted" : "sr-only"}>
-            {description ?? title}
-          </DrawerDescription>
-        </DrawerHeader>
-
-        <div className="max-h-[80vh] overflow-y-auto px-4 pt-2 pb-8">{children}</div>
+        <div className="max-h-[calc(100dvh-4.5rem)] overflow-y-auto overscroll-contain px-4 pt-1 pb-8">
+          {children}
+        </div>
       </DrawerContent>
     </Drawer>
   );

@@ -6,20 +6,27 @@ import { Check, Landmark, Plus } from "lucide-react";
 import { supabase } from "~/lib/supabase";
 import { env } from "~/env";
 import type { Database } from "~/types/database";
-import type { Transaction } from "~/lib/finances";
+import {
+  getSettlementRecipientId,
+  getSettlementStatus,
+  isSettlementEntry,
+  type FinanceExpense,
+  type SettlementStatus,
+  type Transaction,
+} from "~/lib/finances";
 
-type Expense = Database["public"]["Tables"]["expenses"]["Row"];
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
 
 interface ExpenseReceiptProps {
-  expenses: Expense[];
+  expenses: FinanceExpense[];
   users: User[];
   activeUserId: string;
   balance: number;
   debts: Transaction[];
   receivables: Transaction[];
-  onSettled: () => void;
+  onDataChanged: () => void;
   onAddExpense: () => void;
+  onPrepareAddExpense?: () => void;
 }
 
 const BARCODE_PATTERN = [
@@ -33,28 +40,41 @@ export function ExpenseReceipt({
   balance,
   debts,
   receivables,
-  onSettled,
+  onDataChanged,
   onAddExpense,
+  onPrepareAddExpense,
 }: ExpenseReceiptProps) {
-  const [isSettlingTo, setIsSettlingTo] = useState<string | null>(null);
-  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [confirmingDebtTo, setConfirmingDebtTo] = useState<string | null>(null);
+  const [processingKey, setProcessingKey] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const isSettlement = (description: string) => description.toLowerCase().includes("spłata");
+  const getUserName = (userId: string) =>
+    users.find((user) => user.id === userId)?.name ?? "Nieznany";
 
-  const regularExpenses = expenses.filter((expense) => !isSettlement(expense.description));
-  const settlementExpenses = expenses.filter((expense) => isSettlement(expense.description));
+  const regularExpenses = expenses.filter((expense) => !isSettlementEntry(expense));
 
-  const totalTripCost = regularExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const totalSettlements = settlementExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const finalSum = totalTripCost - totalSettlements;
+  const settlements = expenses.filter(isSettlementEntry);
+
+  const pendingIncoming = settlements.filter(
+    (settlement) =>
+      getSettlementStatus(settlement) === "pending" &&
+      getSettlementRecipientId(settlement) === activeUserId,
+  );
+
+  const pendingOutgoing = settlements.filter(
+    (settlement) =>
+      getSettlementStatus(settlement) === "pending" && settlement.user_id === activeUserId,
+  );
+
+  const totalTripCost = regularExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
 
   const groupTotal = regularExpenses
     .filter((expense) => expense.split_among.length === users.length)
-    .reduce((sum, expense) => sum + expense.amount, 0);
+    .reduce((sum, expense) => sum + Number(expense.amount), 0);
 
   const partialTotal = regularExpenses
     .filter((expense) => expense.split_among.length !== users.length)
-    .reduce((sum, expense) => sum + expense.amount, 0);
+    .reduce((sum, expense) => sum + Number(expense.amount), 0);
 
   const tripIdShort = env.NEXT_PUBLIC_TRIP_ID.split("-")[0]?.toUpperCase() ?? "01103";
 
@@ -66,27 +86,87 @@ export function ExpenseReceipt({
     minute: "2-digit",
   });
 
-  const isFullySettled = debts.length === 0 && receivables.length === 0;
+  const isFullySettled =
+    debts.length === 0 &&
+    receivables.length === 0 &&
+    pendingIncoming.length === 0 &&
+    pendingOutgoing.length === 0;
 
-  const handleSettle = async (creditorId: string, amount: number) => {
-    setIsSettlingTo(creditorId);
+  const findPendingToRecipient = (recipientId: string) =>
+    pendingOutgoing.find((settlement) => getSettlementRecipientId(settlement) === recipientId);
+
+  const pendingAmountFromDebtor = (debtorId: string) =>
+    pendingIncoming
+      .filter((settlement) => settlement.user_id === debtorId)
+      .reduce((sum, settlement) => sum + Number(settlement.amount), 0);
+
+  const handleReportPayment = async (recipientId: string, amount: number) => {
+    const processingId = `report:${recipientId}`;
+
+    setActionError(null);
+    setProcessingKey(processingId);
 
     const { error } = await supabase.from("expenses").insert({
       trip_id: env.NEXT_PUBLIC_TRIP_ID,
       user_id: activeUserId,
       amount,
-      description: "Spłata długu",
-      split_among: [creditorId],
-    });
+      description: "Zgłoszona wpłata",
+      split_among: [recipientId],
+      entry_type: "settlement",
+      settlement_status: "pending",
+      settlement_recipient_id: recipientId,
+      settlement_confirmed_at: null,
+      settlement_confirmed_by: null,
+    } as never);
 
-    setIsSettlingTo(null);
-    setConfirmingId(null);
+    setProcessingKey(null);
+    setConfirmingDebtTo(null);
 
-    if (!error) {
-      onSettled();
-    } else {
-      console.error("Błąd zapisu spłaty:", error);
+    if (error) {
+      console.error("Błąd zgłoszenia wpłaty:", error);
+      setActionError("Nie udało się zgłosić wpłaty. Spróbuj ponownie.");
+      return;
     }
+
+    onDataChanged();
+  };
+
+  const handleSettlementDecision = async (
+    settlementId: string,
+    status: Extract<SettlementStatus, "confirmed" | "rejected">,
+  ) => {
+    const processingId = `${status}:${settlementId}`;
+
+    setActionError(null);
+    setProcessingKey(processingId);
+
+    const updateData =
+      status === "confirmed"
+        ? {
+            settlement_status: "confirmed",
+            settlement_confirmed_at: new Date().toISOString(),
+            settlement_confirmed_by: activeUserId,
+          }
+        : {
+            settlement_status: "rejected",
+            settlement_confirmed_at: null,
+            settlement_confirmed_by: null,
+          };
+
+    const { error } = await supabase
+      .from("expenses")
+      .update(updateData as never)
+      .eq("id", settlementId);
+
+    setProcessingKey(null);
+
+    if (error) {
+      console.error("Błąd zapisu potwierdzenia:", error);
+      setActionError("Nie udało się zapisać decyzji. Spróbuj ponownie.");
+      return;
+    }
+
+    onDataChanged();
   };
 
   return (
@@ -126,6 +206,9 @@ export function ExpenseReceipt({
         </p>
 
         <button
+          type="button"
+          onPointerDown={onPrepareAddExpense}
+          onFocus={onPrepareAddExpense}
           onClick={onAddExpense}
           className="border-theme-primary/35 bg-theme-primary/5 text-theme-primary hover:bg-theme-primary/10 mt-5 flex w-full items-center justify-center gap-2 rounded-md border border-dashed py-3 text-[11px] font-bold tracking-[0.16em] uppercase transition active:scale-[0.99]"
         >
@@ -135,20 +218,16 @@ export function ExpenseReceipt({
       </div>
 
       <div className="mt-2 flex flex-col gap-4">
-        {expenses.length === 0 ? (
+        {regularExpenses.length === 0 ? (
           <p className="text-theme-muted py-6 text-center text-[12px] uppercase">Brak wpisów</p>
         ) : (
-          expenses.map((expense) => {
-            const user = users.find((person) => person.id === expense.user_id)?.name ?? "Nieznany";
-
+          regularExpenses.map((expense) => {
+            const payer = getUserName(expense.user_id);
             const isAll = expense.split_among.length === users.length;
-            const settlement = isSettlement(expense.description);
 
             const splitNames = isAll
               ? "WSZYSCY"
-              : expense.split_among
-                  .map((id) => users.find((person) => person.id === id)?.name ?? "?")
-                  .join(", ");
+              : expense.split_among.map((id) => getUserName(id)).join(", ");
 
             const date = expense.created_at
               ? new Date(expense.created_at).toLocaleString("pl-PL", {
@@ -165,32 +244,26 @@ export function ExpenseReceipt({
                 className="flex flex-col border-b border-dashed border-white/10 pb-4 last:border-0 last:pb-0"
               >
                 <div className="flex items-start justify-between gap-3">
-                  <span
-                    className={`text-[13px] leading-snug font-bold uppercase ${
-                      settlement ? "text-theme-primary line-through opacity-70" : "text-white"
-                    }`}
-                  >
+                  <span className="text-[13px] leading-snug font-bold text-white uppercase">
                     {expense.description}
                   </span>
 
                   <div className="flex shrink-0 items-baseline gap-1.5">
                     <span className="text-[14px] font-bold text-white">
-                      {expense.amount.toFixed(2)}
+                      {Number(expense.amount).toFixed(2)}
                     </span>
 
                     <span className="text-theme-muted text-[11px]">{isAll ? "A" : "B"}</span>
                   </div>
                 </div>
 
-                <span className="text-theme-muted font-mono text-[11px] uppercase">
-                  PŁATNIK: <span className="text-white/80">{user}</span>
+                <span className="text-theme-muted text-[11px] uppercase">
+                  PŁATNIK: <span className="text-white/80">{payer}</span>
                 </span>
 
-                {!settlement && (
-                  <span className="text-theme-muted/80 mt-1 block text-[9px] leading-snug uppercase">
-                    PODZIAŁ: <span className="text-white/70">{splitNames}</span>
-                  </span>
-                )}
+                <span className="text-theme-muted/80 mt-1 block text-[9px] leading-snug uppercase">
+                  PODZIAŁ: <span className="text-white/70">{splitNames}</span>
+                </span>
 
                 <span className="text-theme-muted/40 mt-2 text-[9px] tracking-tighter uppercase">
                   {date}
@@ -200,6 +273,50 @@ export function ExpenseReceipt({
           })
         )}
       </div>
+
+      {settlements.length > 0 && (
+        <div className="mt-5 flex flex-col gap-2 border-t border-dashed border-white/20 pt-4">
+          <span className="text-theme-muted/70 text-[10px] font-bold tracking-widest uppercase">
+            Rejestr wpłat
+          </span>
+
+          {settlements.map((settlement) => {
+            const recipientId = getSettlementRecipientId(settlement);
+            const recipient = recipientId ? getUserName(recipientId) : "Nieznany";
+            const debtor = getUserName(settlement.user_id);
+            const status = getSettlementStatus(settlement);
+
+            const statusLabel =
+              status === "pending"
+                ? "oczekuje"
+                : status === "confirmed"
+                  ? "potwierdzono"
+                  : "odrzucono";
+
+            const statusClass =
+              status === "confirmed"
+                ? "text-theme-accent"
+                : status === "pending"
+                  ? "text-theme-primary"
+                  : "text-theme-muted";
+
+            return (
+              <div
+                key={settlement.id}
+                className="flex items-center justify-between gap-3 text-[10px] uppercase"
+              >
+                <span className="text-white/70">
+                  {debtor} → {recipient}
+                </span>
+
+                <span className={`${statusClass} shrink-0 font-bold`}>
+                  {Number(settlement.amount).toFixed(2)} · {statusLabel}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {regularExpenses.length > 0 && (
         <div className="text-theme-muted/70 mt-5 flex flex-col gap-1 border-t border-dashed border-white/20 pt-4 text-[10px] uppercase">
@@ -217,18 +334,13 @@ export function ExpenseReceipt({
 
       <div className="mt-3 flex flex-col gap-1.5 border-t border-dashed border-white/20 pt-4 text-[12px] uppercase">
         <div className="flex justify-between font-bold text-white/80">
-          <span>Wydatek całkowity</span>
+          <span>Wydatki razem</span>
           <span>{totalTripCost.toFixed(2)}</span>
-        </div>
-
-        <div className="text-theme-primary/80 flex justify-between font-bold">
-          <span>Spłaty długów</span>
-          <span>-{totalSettlements.toFixed(2)}</span>
         </div>
 
         <div className="mt-2 flex justify-between text-[17px] font-bold tracking-wider text-white">
           <span>Suma PLN</span>
-          <span>{finalSum.toFixed(2)}</span>
+          <span>{totalTripCost.toFixed(2)}</span>
         </div>
       </div>
 
@@ -236,6 +348,12 @@ export function ExpenseReceipt({
         <span className="text-theme-muted/80 text-[11px] font-bold tracking-widest uppercase">
           Rozliczenie płatności
         </span>
+
+        {actionError && (
+          <div className="border-theme-primary/30 bg-theme-primary/5 text-theme-primary rounded-lg border border-dashed px-3 py-2 text-[10px]">
+            {actionError}
+          </div>
+        )}
 
         {isFullySettled ? (
           <div className="border-theme-accent/30 bg-theme-accent/5 flex items-center justify-between rounded-lg border border-dashed px-3 py-2">
@@ -246,44 +364,106 @@ export function ExpenseReceipt({
             <Check size={14} className="text-theme-accent" />
           </div>
         ) : (
-          <div className="flex flex-col gap-3 text-[12px] uppercase">
+          <div className="flex flex-col gap-4 text-[12px] uppercase">
+            {pendingIncoming.length > 0 && (
+              <div className="border-theme-primary/25 bg-theme-primary/5 flex flex-col gap-2 rounded-lg border border-dashed p-3">
+                <span className="text-theme-primary text-[10px] font-bold tracking-wider">
+                  Do potwierdzenia
+                </span>
+
+                {pendingIncoming.map((settlement) => {
+                  const debtor = getUserName(settlement.user_id);
+                  const isConfirming = processingKey === `confirmed:${settlement.id}`;
+                  const isRejecting = processingKey === `rejected:${settlement.id}`;
+
+                  return (
+                    <div
+                      key={settlement.id}
+                      className="flex flex-col gap-2 border-t border-dashed border-white/10 pt-2 first:border-0 first:pt-0"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-white/90">← {debtor}</span>
+
+                        <span className="text-theme-accent font-bold">
+                          {Number(settlement.amount).toFixed(2)}
+                        </span>
+                      </div>
+
+                      <span className="text-theme-muted text-[9px] normal-case">
+                        {debtor} zgłasza, że wysłał przelew.
+                      </span>
+
+                      <div className="flex items-center gap-3 normal-case">
+                        <button
+                          type="button"
+                          disabled={isConfirming || isRejecting}
+                          onClick={() => void handleSettlementDecision(settlement.id, "confirmed")}
+                          className="text-theme-accent text-[11px] font-bold underline decoration-dotted underline-offset-2 disabled:opacity-40"
+                        >
+                          {isConfirming ? "[ zapis... ]" : "[ wpłynęło ]"}
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isConfirming || isRejecting}
+                          onClick={() => void handleSettlementDecision(settlement.id, "rejected")}
+                          className="text-theme-muted text-[11px] font-bold underline decoration-dotted underline-offset-2 disabled:opacity-40"
+                        >
+                          {isRejecting ? "[ zapis... ]" : "[ nie ma ]"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             {debts.length > 0 && (
               <div className="flex flex-col gap-2">
                 <span className="text-theme-muted/60 text-[10px] tracking-wider">Musisz oddać</span>
 
                 {debts.map((debt) => {
-                  const creditor =
-                    users.find((person) => person.id === debt.to)?.name ?? "Nieznany";
-
-                  const isProcessing = isSettlingTo === debt.to;
-                  const isConfirming = confirmingId === debt.to;
+                  const creditor = getUserName(debt.to);
+                  const pending = findPendingToRecipient(debt.to);
+                  const isConfirming = confirmingDebtTo === debt.to;
+                  const isReporting = processingKey === `report:${debt.to}`;
 
                   return (
                     <div key={debt.to} className="flex items-center justify-between gap-2">
                       <span className="text-white/90">→ {creditor}</span>
 
-                      {isConfirming ? (
+                      {pending ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-theme-primary text-[10px] font-bold normal-case">
+                            czeka na potwierdzenie
+                          </span>
+
+                          <span className="text-theme-primary font-bold">
+                            {Number(pending.amount).toFixed(2)}
+                          </span>
+                        </div>
+                      ) : isConfirming ? (
                         <div className="flex items-center gap-2 normal-case">
                           <span className="text-theme-muted text-[10px] whitespace-nowrap">
-                            na pewno?
+                            przelew wysłany?
                           </span>
 
                           <button
-                            disabled={isProcessing}
-                            onClick={() => void handleSettle(debt.to, debt.amount)}
-                            aria-label={`Potwierdź spłatę dla ${creditor}`}
-                            className="text-theme-accent text-[11px] font-bold underline decoration-dotted underline-offset-2 transition-opacity hover:opacity-70 disabled:opacity-40"
+                            type="button"
+                            disabled={isReporting}
+                            onClick={() => void handleReportPayment(debt.to, debt.amount)}
+                            className="text-theme-accent text-[11px] font-bold underline decoration-dotted underline-offset-2 disabled:opacity-40"
                           >
-                            [TAK]
+                            {isReporting ? "[ zapis... ]" : "[ TAK ]"}
                           </button>
 
                           <button
-                            disabled={isProcessing}
-                            onClick={() => setConfirmingId(null)}
-                            aria-label="Anuluj"
-                            className="text-theme-muted text-[11px] font-bold underline decoration-dotted underline-offset-2 transition-opacity hover:opacity-70"
+                            type="button"
+                            disabled={isReporting}
+                            onClick={() => setConfirmingDebtTo(null)}
+                            className="text-theme-muted text-[11px] font-bold underline decoration-dotted underline-offset-2 disabled:opacity-40"
                           >
-                            [NIE]
+                            [ NIE ]
                           </button>
                         </div>
                       ) : (
@@ -293,10 +473,11 @@ export function ExpenseReceipt({
                           </span>
 
                           <button
-                            onClick={() => setConfirmingId(debt.to)}
-                            className="text-theme-primary text-[11px] font-bold normal-case underline decoration-dotted underline-offset-2 transition-opacity hover:opacity-70"
+                            type="button"
+                            onClick={() => setConfirmingDebtTo(debt.to)}
+                            className="text-theme-primary text-[11px] font-bold normal-case underline decoration-dotted underline-offset-2"
                           >
-                            [ spłać ]
+                            [ zgłoś przelew ]
                           </button>
                         </div>
                       )}
@@ -313,14 +494,45 @@ export function ExpenseReceipt({
                 </span>
 
                 {receivables.map((receivable) => {
-                  const debtor =
-                    users.find((person) => person.id === receivable.from)?.name ?? "Nieznany";
+                  const debtor = getUserName(receivable.from);
+                  const pendingAmount = pendingAmountFromDebtor(receivable.from);
 
                   return (
-                    <div key={receivable.from} className="flex items-center justify-between">
+                    <div key={receivable.from} className="flex items-center justify-between gap-2">
                       <span className="text-white/70">← {debtor}</span>
-                      <span className="text-theme-accent/90 font-bold">
-                        {receivable.amount.toFixed(2)}
+
+                      <div className="flex items-center gap-2">
+                        {pendingAmount > 0 && (
+                          <span className="text-theme-primary text-[9px] font-bold normal-case">
+                            {pendingAmount.toFixed(2)} czeka
+                          </span>
+                        )}
+
+                        <span className="text-theme-accent/90 font-bold">
+                          {receivable.amount.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {pendingOutgoing.length > 0 && (
+              <div className="flex flex-col gap-2 border-t border-dashed border-white/10 pt-3">
+                <span className="text-theme-muted/60 text-[10px] tracking-wider">
+                  Oczekuje na potwierdzenie
+                </span>
+
+                {pendingOutgoing.map((settlement) => {
+                  const recipientId = getSettlementRecipientId(settlement);
+
+                  return (
+                    <div key={settlement.id} className="flex items-center justify-between">
+                      <span className="text-white/70">→ {getUserName(recipientId ?? "")}</span>
+
+                      <span className="text-theme-primary font-bold">
+                        {Number(settlement.amount).toFixed(2)}
                       </span>
                     </div>
                   );

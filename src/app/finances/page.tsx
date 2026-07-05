@@ -1,18 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Lock } from "lucide-react";
 import { supabase } from "~/lib/supabase";
 import { env } from "~/env";
-import { ResponsiveModal } from "~/components/responsive-modal";
-import { ExpenseForm } from "~/components/modules/finances/expense-form";
-import { calculateFinances } from "~/lib/finances";
+import { calculateFinances, type FinanceExpense } from "~/lib/finances";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Link } from "~/components/ui/link";
 import { ExpenseReceipt } from "~/components/modules/finances/expense-receipt";
 import type { Database } from "~/types/database";
 
-type Expense = Database["public"]["Tables"]["expenses"]["Row"];
+const ResponsiveModal = dynamic(
+  () => import("~/components/responsive-modal").then((module) => module.ResponsiveModal),
+  { ssr: false },
+);
+
+const ExpenseForm = dynamic(
+  () => import("~/components/modules/finances/expense-form").then((module) => module.ExpenseForm),
+  { ssr: false },
+);
+
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
 
 export default function FinancesPage() {
@@ -20,51 +28,95 @@ export default function FinancesPage() {
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
 
   const [users, setUsers] = useState<User[]>([]);
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [expenses, setExpenses] = useState<FinanceExpense[]>([]);
+
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    setHasError(false);
+  const isFinanceEnabled = env.NEXT_PUBLIC_FINANCE_ENABLED === "true";
 
-    const [usersRes, expensesRes] = await Promise.all([
-      supabase
-        .from("users")
-        .select("id, name")
-        .eq("trip_id", env.NEXT_PUBLIC_TRIP_ID)
-        .order("name"),
-      supabase
-        .from("expenses")
-        .select("*")
-        .eq("trip_id", env.NEXT_PUBLIC_TRIP_ID)
-        .order("created_at", { ascending: true }),
-    ]);
+  const preloadExpenseUi = useCallback(() => {
+    void import("~/components/responsive-modal");
+    void import("~/components/modules/finances/expense-form");
+  }, []);
 
-    if (usersRes.error || expensesRes.error) {
-      console.error("Błąd wczytywania finansów:", usersRes.error ?? expensesRes.error);
-      setHasError(true);
-    } else {
-      if (usersRes.data) setUsers(usersRes.data);
-      if (expensesRes.data) setExpenses(expensesRes.data);
+  const loadData = useCallback(async (showInitialLoader = false) => {
+    if (showInitialLoader) {
+      setIsInitialLoading(true);
     }
 
-    setIsLoading(false);
-  };
+    setHasError(false);
 
-  const isFinanceEnabled = env.NEXT_PUBLIC_FINANCE_ENABLED === "true";
+    try {
+      const [usersRes, expensesRes] = await Promise.all([
+        supabase
+          .from("users")
+          .select("id, name")
+          .eq("trip_id", env.NEXT_PUBLIC_TRIP_ID)
+          .order("name"),
+
+        supabase
+          .from("expenses")
+          .select("*")
+          .eq("trip_id", env.NEXT_PUBLIC_TRIP_ID)
+          .order("created_at", { ascending: true }),
+      ]);
+
+      if (usersRes.error || expensesRes.error) {
+        console.error("Błąd wczytywania finansów:", usersRes.error ?? expensesRes.error);
+
+        setHasError(true);
+        return;
+      }
+
+      setUsers(usersRes.data ?? []);
+      setExpenses(expensesRes.data ?? []);
+    } catch (error) {
+      console.error("Błąd wczytywania finansów:", error);
+      setHasError(true);
+    } finally {
+      if (showInitialLoader) {
+        setIsInitialLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     const storedUserId = localStorage.getItem("tripkit_user_id");
 
-    if (storedUserId) {
-      setActiveUserId(storedUserId);
-      void fetchData();
+    setMounted(true);
+
+    if (!storedUserId) {
+      setIsInitialLoading(false);
+      return;
     }
 
-    setMounted(true);
-  }, []);
+    setActiveUserId(storedUserId);
+    void loadData(true);
+  }, [loadData]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      preloadExpenseUi();
+    }, 600);
+
+    return () => window.clearTimeout(timer);
+  }, [preloadExpenseUi]);
+
+  const refreshWithoutScrollJump = useCallback(async () => {
+    const previousScrollPosition = window.scrollY;
+
+    await loadData(false);
+
+    requestAnimationFrame(() => {
+      window.scrollTo({
+        top: previousScrollPosition,
+        left: 0,
+        behavior: "auto",
+      });
+    });
+  }, [loadData]);
 
   const { balances, transactions } = useMemo(
     () => calculateFinances(expenses, users),
@@ -101,35 +153,58 @@ export default function FinancesPage() {
 
   const activeUserBalance = balances[activeUserId] ?? 0;
 
+  const showBlockingError = hasError && users.length === 0 && expenses.length === 0;
+
   return (
-    <div className="animate-fade-in pb-4">
-      {isLoading ? (
+    <div className="animate-fade-in pb-safe pt-4">
+      {isInitialLoading ? (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-32 w-full rounded-2xl" />
           <Skeleton className="h-100 w-full rounded-2xl" />
         </div>
-      ) : hasError ? (
+      ) : showBlockingError ? (
         <div className="border-theme-primary/20 bg-theme-card flex flex-col items-center gap-3 rounded-2xl border py-10 text-center">
           <span className="font-body text-theme-muted text-sm">Nie udało się wczytać danych.</span>
 
           <button
-            onClick={() => void fetchData()}
+            type="button"
+            onClick={() => void loadData(true)}
             className="bg-theme-primary/20 text-theme-primary font-body hover:bg-theme-primary rounded-lg px-4 py-2 text-xs font-bold transition-colors hover:text-white"
           >
             Spróbuj ponownie
           </button>
         </div>
       ) : (
-        <ExpenseReceipt
-          expenses={expenses}
-          users={users}
-          activeUserId={activeUserId}
-          balance={activeUserBalance}
-          debts={transactions.filter((transaction) => transaction.from === activeUserId)}
-          receivables={transactions.filter((transaction) => transaction.to === activeUserId)}
-          onSettled={() => void fetchData()}
-          onAddExpense={() => setIsModalOpen(true)}
-        />
+        <>
+          {hasError && (
+            <div className="border-theme-primary/20 bg-theme-primary/5 text-theme-muted mb-3 flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-xs">
+              <span>Nie udało się odświeżyć danych.</span>
+
+              <button
+                type="button"
+                onClick={() => void loadData(false)}
+                className="text-theme-primary font-bold"
+              >
+                Ponów
+              </button>
+            </div>
+          )}
+
+          <ExpenseReceipt
+            expenses={expenses}
+            users={users}
+            activeUserId={activeUserId}
+            balance={activeUserBalance}
+            debts={transactions.filter((transaction) => transaction.from === activeUserId)}
+            receivables={transactions.filter((transaction) => transaction.to === activeUserId)}
+            onDataChanged={() => void refreshWithoutScrollJump()}
+            onAddExpense={() => {
+              preloadExpenseUi();
+              setIsModalOpen(true);
+            }}
+            onPrepareAddExpense={preloadExpenseUi}
+          />
+        </>
       )}
 
       <ResponsiveModal isOpen={isModalOpen} setIsOpen={setIsModalOpen}>
@@ -138,7 +213,7 @@ export default function FinancesPage() {
           activeUserId={activeUserId}
           onSuccess={() => {
             setIsModalOpen(false);
-            void fetchData();
+            void refreshWithoutScrollJump();
           }}
         />
       </ResponsiveModal>

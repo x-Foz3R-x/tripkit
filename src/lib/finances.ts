@@ -3,80 +3,126 @@ import type { Database } from "~/types/database";
 type Expense = Database["public"]["Tables"]["expenses"]["Row"];
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
 
-export type Transaction = {
+export type SettlementStatus = "pending" | "confirmed" | "rejected";
+
+export type FinanceExpense = Expense & {
+  entry_type?: "expense" | "settlement" | null;
+  settlement_status?: SettlementStatus | null;
+  settlement_recipient_id?: string | null;
+  settlement_confirmed_at?: string | null;
+  settlement_confirmed_by?: string | null;
+};
+
+export interface Transaction {
   from: string;
   to: string;
   amount: number;
+}
+
+const roundMoney = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100;
+
+const isLegacySettlement = (expense: FinanceExpense) =>
+  expense.description.trim().toLowerCase() === "spłata długu";
+
+export const isSettlementEntry = (expense: FinanceExpense) =>
+  expense.entry_type === "settlement" ||
+  (expense.entry_type == null && isLegacySettlement(expense));
+
+export const getSettlementRecipientId = (expense: FinanceExpense) =>
+  expense.settlement_recipient_id ?? expense.split_among[0] ?? null;
+
+export const getSettlementStatus = (expense: FinanceExpense): SettlementStatus | null => {
+  if (!isSettlementEntry(expense)) return null;
+
+  return expense.settlement_status ?? "confirmed";
 };
 
-export function calculateFinances(expenses: Expense[], users: User[]) {
-  const graph: Record<string, Record<string, number>> = {};
+const calculateTransactions = (balances: Record<string, number>): Transaction[] => {
+  const debtors = Object.entries(balances)
+    .filter(([, balance]) => balance < -0.009)
+    .map(([id, balance]) => ({
+      id,
+      amount: roundMoney(-balance),
+    }));
 
-  users.forEach((u1) => {
-    graph[u1.id] = {};
-    users.forEach((u2) => (graph[u1.id]![u2.id] = 0));
-  });
-
-  // Rozdzielanie rachunków
-  expenses.forEach((exp) => {
-    if (!exp.user_id || exp.split_among.length === 0) return;
-
-    const payer = exp.user_id;
-    const splitCount = exp.split_among.length;
-
-    // Konwersja na grosze
-    const totalCents = Math.round(exp.amount * 100);
-    const baseShare = Math.floor(totalCents / splitCount);
-    let remainder = totalCents % splitCount;
-
-    exp.split_among.forEach((debtor) => {
-      if (debtor !== payer) {
-        let share = baseShare;
-        // Rozdajemy resztę grosz-po-groszu, żeby suma idealnie zeszła się z bazą
-        if (remainder > 0) {
-          share += 1;
-          remainder -= 1;
-        }
-
-        if (!!graph[debtor] && graph[debtor][payer] !== undefined) graph[debtor][payer] += share;
-      }
-    });
-  });
+  const creditors = Object.entries(balances)
+    .filter(([, balance]) => balance > 0.009)
+    .map(([id, balance]) => ({
+      id,
+      amount: roundMoney(balance),
+    }));
 
   const transactions: Transaction[] = [];
-  const userBalances: Record<string, number> = {};
-  users.forEach((u) => (userBalances[u.id] = 0));
 
-  for (let i = 0; i < users.length; i++) {
-    for (let j = i + 1; j < users.length; j++) {
-      const u1 = users[i]!.id;
-      const u2 = users[j]!.id;
+  let debtorIndex = 0;
+  let creditorIndex = 0;
 
-      const u1OwesU2 = graph[u1]![u2] ?? 0;
-      const u2OwesU1 = graph[u2]![u1] ?? 0;
+  while (debtorIndex < debtors.length && creditorIndex < creditors.length) {
+    const debtor = debtors[debtorIndex];
+    const creditor = creditors[creditorIndex];
 
-      const net = u1OwesU2 - u2OwesU1;
+    if (!debtor || !creditor) break;
 
-      if (net > 0) {
-        // u1 wisi u2
-        const finalAmount = net / 100;
-        transactions.push({ from: u1, to: u2, amount: finalAmount });
-        userBalances[u1]! -= finalAmount;
-        userBalances[u2]! += finalAmount;
-      } else if (net < 0) {
-        // u2 wisi u1
-        const finalAmount = Math.abs(net) / 100;
-        transactions.push({ from: u2, to: u1, amount: finalAmount });
-        userBalances[u2]! -= finalAmount;
-        userBalances[u1]! += finalAmount;
-      }
+    const amount = roundMoney(Math.min(debtor.amount, creditor.amount));
+
+    if (amount > 0) {
+      transactions.push({
+        from: debtor.id,
+        to: creditor.id,
+        amount,
+      });
+    }
+
+    debtor.amount = roundMoney(debtor.amount - amount);
+    creditor.amount = roundMoney(creditor.amount - amount);
+
+    if (debtor.amount < 0.009) debtorIndex += 1;
+    if (creditor.amount < 0.009) creditorIndex += 1;
+  }
+
+  return transactions;
+};
+
+export function calculateFinances(expenses: FinanceExpense[], users: User[]) {
+  const balances: Record<string, number> = Object.fromEntries(users.map((user) => [user.id, 0]));
+
+  for (const expense of expenses) {
+    const amount = Number(expense.amount);
+
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+
+    if (isSettlementEntry(expense)) {
+      const recipientId = getSettlementRecipientId(expense);
+      const settlementStatus = getSettlementStatus(expense);
+
+      if (!recipientId || settlementStatus !== "confirmed") continue;
+
+      balances[expense.user_id] = roundMoney((balances[expense.user_id] ?? 0) + amount);
+
+      balances[recipientId] = roundMoney((balances[recipientId] ?? 0) - amount);
+
+      continue;
+    }
+
+    const participants = expense.split_among.filter(Boolean);
+
+    if (participants.length === 0) continue;
+
+    const share = amount / participants.length;
+
+    balances[expense.user_id] = roundMoney((balances[expense.user_id] ?? 0) + amount);
+
+    for (const participantId of participants) {
+      balances[participantId] = roundMoney((balances[participantId] ?? 0) - share);
     }
   }
 
-  // Zaokrąglenie salda ostatecznego
-  Object.keys(userBalances).forEach((id) => {
-    userBalances[id] = Math.round((userBalances[id] ?? 0) * 100) / 100;
-  });
+  const roundedBalances = Object.fromEntries(
+    Object.entries(balances).map(([id, balance]) => [id, roundMoney(balance)]),
+  );
 
-  return { balances: userBalances, transactions };
+  return {
+    balances: roundedBalances,
+    transactions: calculateTransactions(roundedBalances),
+  };
 }

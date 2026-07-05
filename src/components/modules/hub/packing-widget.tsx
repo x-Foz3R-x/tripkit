@@ -14,7 +14,7 @@ const PACKING_LIST = [
   },
   {
     category: "Ubrania",
-    items: ["Bielizna", "Kąpielówki", "Klapki", "Coś ciepłego"],
+    items: ["Bielizna", "Kąpielówki", "Klapki", "Ręcznik", "Coś ciepłego"],
   },
   {
     category: "Kosmetyczka",
