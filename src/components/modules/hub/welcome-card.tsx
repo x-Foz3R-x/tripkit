@@ -7,6 +7,7 @@ import { supabase } from "~/lib/supabase";
 import { env } from "~/env";
 import { Skeleton } from "~/components/ui/skeleton";
 import type { Database } from "~/types/database";
+import { Avatar } from "~/components/ui/avatar";
 
 // Bierzemy DOKŁADNIE typy kolumn 'id' i 'name' z tabeli 'users' z naszej bazy
 type Participant = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
@@ -74,7 +75,7 @@ export function WelcomeCard() {
       <div className="bg-theme-card flex items-center justify-between rounded-2xl border border-white/5 p-5 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="bg-theme-primary/20 text-theme-primary flex h-12 w-12 items-center justify-center rounded-full">
-            <UserIcon size={24} />
+            <Avatar user={activeUser} />
           </div>
           <div>
             <p className="font-body text-theme-muted text-sm">Gotowy na wyjazd?</p>
