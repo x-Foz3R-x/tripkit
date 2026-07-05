@@ -1,3 +1,4 @@
+// src/components/modules/finances/expense-form.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -17,7 +18,7 @@ interface ExpenseFormProps {
 
 export function ExpenseForm({ users, activeUserId, onSuccess }: ExpenseFormProps) {
   const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [payerId, setPayerId] = useState<string>(activeUserId);
   const [splitAmong, setSplitAmong] = useState<string[]>(users.map((u) => u.id));
@@ -28,6 +29,11 @@ export function ExpenseForm({ users, activeUserId, onSuccess }: ExpenseFormProps
 
   const otherParticipants = splitAmong.filter((id) => id !== payerId);
 
+  const parsedAmount = Number(amount);
+  const isAmountValid = !Number.isNaN(parsedAmount) && parsedAmount > 0;
+  const isFormValid =
+    description.trim().length > 0 && isAmountValid && otherParticipants.length > 0;
+
   const toggleUser = (userId: string) => {
     if (userId === payerId) return;
     setSplitAmong((prev) =>
@@ -36,13 +42,13 @@ export function ExpenseForm({ users, activeUserId, onSuccess }: ExpenseFormProps
   };
 
   const handleSubmit = async () => {
-    if (!description || !amount || !payerId || otherParticipants.length === 0) return;
+    if (!isFormValid) return;
     setIsLoading(true);
 
     const { error } = await supabase.from("expenses").insert({
       trip_id: env.NEXT_PUBLIC_TRIP_ID,
       user_id: payerId,
-      amount: parseFloat(amount),
+      amount: parsedAmount,
       description: description.trim(),
       split_among: splitAmong,
     });
@@ -85,8 +91,9 @@ export function ExpenseForm({ users, activeUserId, onSuccess }: ExpenseFormProps
           label="Kwota"
           type="number"
           step="0.01"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          min="0.01"
+          value={amount ?? ""}
+          onChange={(e) => setAmount(Number(e.target.value))}
           className={{ input: "pr-12 font-mono text-lg" }}
         />
         <span className="text-theme-muted absolute top-1/2 right-4 -translate-y-1/2 font-mono">
@@ -104,7 +111,8 @@ export function ExpenseForm({ users, activeUserId, onSuccess }: ExpenseFormProps
               <button
                 key={u.id}
                 onClick={() => toggleUser(u.id)}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none ${
+                aria-pressed={isSelected}
+                className={`focus-visible:ring-theme-primary focus-visible:ring-offset-theme-bg flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95 ${
                   isSelected
                     ? "border-theme-primary bg-theme-primary/10 text-theme-primary"
                     : "bg-theme-bg text-theme-muted border-white/10 hover:border-white/30"
@@ -120,7 +128,7 @@ export function ExpenseForm({ users, activeUserId, onSuccess }: ExpenseFormProps
 
       <button
         onClick={() => void handleSubmit()}
-        disabled={isLoading || !description || !amount || otherParticipants.length === 0}
+        disabled={isLoading || !isFormValid}
         className="bg-theme-primary font-body hover:bg-theme-primary/90 mt-4 w-full rounded-xl py-3.5 text-[17px] font-bold text-white shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
       >
         {isLoading ? "Przetwarzanie..." : "Wrzuć do Kociołka"}

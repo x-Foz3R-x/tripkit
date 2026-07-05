@@ -39,7 +39,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const autoVariant = label ? "insetLabel" : variant;
 
   // Do obsługi pływającego labela potrzebujemy wiedzieć, czy jest jakaś wartość
-  const [hasValue, setHasValue] = useState(!!value || !!defaultValue);
+  const [hasValue, setHasValue] = useState(!!value || typeof value === "number" || !!defaultValue);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setHasValue(e.target.value.length > 0);
@@ -62,8 +62,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         <label
           htmlFor={inputId}
           className={cn(
-            "text-muted peer-focus:text-primary pointer-events-none absolute inset-0 flex origin-top-left items-center overflow-hidden px-4 text-base duration-150 ease-in-out select-none peer-focus:translate-x-0.5 peer-focus:-translate-y-1.5 peer-focus:scale-[0.75]",
-            hasValue && "text-muted translate-x-0.5 -translate-y-1.5 scale-[0.75]",
+            "text-theme-muted peer-focus:text-primary pointer-events-none absolute inset-0 flex origin-top-left items-center overflow-hidden px-4 text-base duration-150 ease-in-out select-none peer-focus:translate-x-0.5 peer-focus:-translate-y-1.5 peer-focus:scale-[0.75]",
+            hasValue && "text-theme-muted translate-x-0.5 -translate-y-1.5 scale-[0.75]",
             className?.label,
           )}
         >

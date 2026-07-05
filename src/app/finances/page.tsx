@@ -16,6 +16,24 @@ import type { Database } from "~/types/database";
 type Expense = Database["public"]["Tables"]["expenses"]["Row"];
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
 
+function FinanceCardSkeleton() {
+  return (
+    <div className="bg-theme-card flex flex-col overflow-hidden rounded-2xl border border-white/10">
+      <div className="flex items-center justify-between bg-white/5 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-10 w-10 rounded-full" />
+          <Skeleton className="h-5 w-24 rounded-md" />
+        </div>
+        <Skeleton className="h-5 w-16 rounded-md" />
+      </div>
+      <div className="flex flex-col gap-2 px-4 py-3">
+        <Skeleton className="h-4 w-full rounded-md" />
+        <Skeleton className="h-4 w-2/3 rounded-md" />
+      </div>
+    </div>
+  );
+}
+
 export default function FinancesPage() {
   const [mounted, setMounted] = useState(false);
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
@@ -23,10 +41,13 @@ export default function FinancesPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchData = async () => {
     setIsLoading(true);
+    setHasError(false);
+
     const [usersRes, expensesRes] = await Promise.all([
       supabase
         .from("users")
@@ -36,8 +57,14 @@ export default function FinancesPage() {
       supabase.from("expenses").select("*").eq("trip_id", env.NEXT_PUBLIC_TRIP_ID),
     ]);
 
-    if (usersRes.data) setUsers(usersRes.data);
-    if (expensesRes.data) setExpenses(expensesRes.data);
+    if (usersRes.error || expensesRes.error) {
+      console.error("Błąd wczytywania finansów:", usersRes.error ?? expensesRes.error);
+      setHasError(true);
+    } else {
+      if (usersRes.data) setUsers(usersRes.data);
+      if (expensesRes.data) setExpenses(expensesRes.data);
+    }
+
     setIsLoading(false);
   };
 
@@ -87,7 +114,8 @@ export default function FinancesPage() {
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="bg-theme-primary flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 active:scale-95"
+          aria-label="Dodaj nowy wydatek"
+          className="bg-theme-primary focus-visible:ring-theme-primary focus-visible:ring-offset-theme-bg flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
         >
           <Plus strokeWidth={2.5} size={24} />
         </button>
@@ -96,26 +124,48 @@ export default function FinancesPage() {
       <section className="flex flex-col gap-4">
         {isLoading ? (
           <div className="flex flex-col gap-3">
-            <Skeleton className="h-24 w-full rounded-2xl" />
-            <Skeleton className="h-24 w-full rounded-2xl" />
-            <Skeleton className="h-24 w-full rounded-2xl" />
+            <FinanceCardSkeleton />
+            <FinanceCardSkeleton />
+            <FinanceCardSkeleton />
+          </div>
+        ) : hasError ? (
+          <div className="border-theme-primary/20 bg-theme-card flex flex-col items-center gap-3 rounded-2xl border py-10 text-center">
+            <span className="font-body text-theme-muted text-sm">
+              Nie udało się wczytać danych.
+            </span>
+            <button
+              onClick={() => void fetchData()}
+              className="bg-theme-primary/20 text-theme-primary font-body hover:bg-theme-primary rounded-lg px-4 py-2 text-xs font-bold transition-colors hover:text-white"
+            >
+              Spróbuj ponownie
+            </button>
+          </div>
+        ) : users.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-white/10 py-12 text-center">
+            <span className="font-body text-theme-muted text-sm">Nikogo tu jeszcze nie ma.</span>
           </div>
         ) : (
-          users.map((user) => (
-            <UserFinanceCard
+          users.map((user, index) => (
+            <div
               key={user.id}
-              user={user}
-              balance={balances[user.id] ?? 0}
-              debts={transactions.filter((t) => t.from === user.id)}
-              receivables={transactions.filter((t) => t.to === user.id)} // Kto MI wisi kasę?
-              allUsers={users}
-              onSettled={() => void fetchData()}
-            />
+              className="animate-fade-in"
+              style={{ animationDelay: `${index * 60}ms`, animationFillMode: "backwards" }}
+            >
+              <UserFinanceCard
+                user={user}
+                balance={balances[user.id] ?? 0}
+                debts={transactions.filter((t) => t.from === user.id)}
+                receivables={transactions.filter((t) => t.to === user.id)}
+                allUsers={users}
+                activeUserId={activeUserId}
+                onSettled={() => void fetchData()}
+              />
+            </div>
           ))
         )}
       </section>
 
-      <ResponsiveModal isOpen={isModalOpen} setIsOpen={setIsModalOpen} title="Nowy wydatek">
+      <ResponsiveModal isOpen={isModalOpen} setIsOpen={setIsModalOpen}>
         <ExpenseForm
           users={users}
           activeUserId={activeUserId}
