@@ -38,7 +38,7 @@ export function calculateFinances(expenses: Expense[], users: User[]) {
           remainder -= 1;
         }
 
-        if (graph[debtor] && graph[debtor][payer] !== undefined) graph[debtor][payer] += share;
+        if (!!graph[debtor] && graph[debtor][payer] !== undefined) graph[debtor][payer] += share;
       }
     });
   });

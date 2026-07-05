@@ -12,6 +12,7 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { Link } from "~/components/ui/link";
 import { UserFinanceCard } from "~/components/modules/finances/user-finance-card";
 import type { Database } from "~/types/database";
+import { Button } from "~/components/ui/button";
 
 type Expense = Database["public"]["Tables"]["expenses"]["Row"];
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
@@ -134,15 +135,17 @@ export default function FinancesPage() {
           <h1 className="font-heading text-theme-text text-5xl font-semibold tracking-wide drop-shadow-sm">
             Kociołek
           </h1>
-          <p className="font-body text-theme-muted text-sm">Każdy pod kontrolą.</p>
         </div>
-        <button
+
+        <Button
           onClick={() => setIsModalOpen(true)}
+          variant="secondary"
+          size="icon"
+          className="text-theme-muted active:scale-95"
           aria-label="Dodaj nowy wydatek"
-          className="bg-theme-primary focus-visible:ring-theme-primary focus-visible:ring-offset-theme-bg flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lg transition-transform hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95"
         >
-          <Plus strokeWidth={2.5} size={24} />
-        </button>
+          <Plus size={24} />
+        </Button>
       </header>
 
       <section className="flex flex-col gap-4">

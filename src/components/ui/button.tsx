@@ -11,10 +11,10 @@ export const ButtonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-white shadow hover:bg-primary/90",
-        outline: "border border-white/20 bg-transparent hover:bg-card hover:text-text",
-        secondary: "bg-card text-text hover:bg-card/80 border border-white/5",
-        ghost: "hover:bg-card hover:text-text",
+        default: "bg-theme-primary text-white shadow hover:bg-theme-primary/90",
+        outline: "border border-white/20 bg-transparent hover:bg-theme-card hover:text-text",
+        secondary: "bg-theme-card text-text hover:bg-theme-card/80 border border-white/5",
+        ghost: "hover:bg-theme-card hover:text-text",
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
