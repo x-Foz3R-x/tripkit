@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User as UserIcon, LogOut, Check } from "lucide-react";
+import { LogOut, Check } from "lucide-react";
 import { supabase } from "~/lib/supabase";
 import { env } from "~/env";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -11,14 +11,6 @@ import { Avatar } from "~/components/ui/avatar";
 
 // Bierzemy DOKŁADNIE typy kolumn 'id' i 'name' z tabeli 'users' z naszej bazy
 type Participant = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
-
-const AVATAR_COLORS = [
-  "bg-blue-500/20 text-blue-500",
-  "bg-theme-primary/20 text-theme-primary",
-  "bg-theme-accent/20 text-theme-accent",
-  "bg-emerald-500/20 text-emerald-500",
-  "bg-rose-500/20 text-rose-500",
-];
 
 export function WelcomeCard() {
   const [mounted, setMounted] = useState(false);
@@ -74,7 +66,7 @@ export function WelcomeCard() {
     return (
       <div className="bg-theme-card flex items-center justify-between rounded-2xl border border-white/5 p-5 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="bg-theme-primary/20 text-theme-primary flex h-12 w-12 items-center justify-center rounded-full">
+          <div className="text-theme-primary flex h-12 w-12 items-center justify-center rounded-full">
             <Avatar user={activeUser} />
           </div>
           <div>
@@ -112,20 +104,14 @@ export function WelcomeCard() {
                 <Skeleton className="h-3 w-16 rounded-md" />
               </div>
             ))
-          : participants.map((user, idx) => {
-              const colorClass = AVATAR_COLORS[idx % AVATAR_COLORS.length];
-
+          : participants.map((user) => {
               return (
                 <button
                   key={user.id}
                   onClick={() => handleSelectUser(user)}
                   className="group bg-theme-bg/50 hover:border-theme-primary/50 focus:ring-theme-primary/50 relative flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border border-white/5 p-2 transition-all hover:bg-white/5 focus:ring-2 focus:outline-none active:scale-95"
                 >
-                  <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-full ${colorClass} transition-transform group-hover:scale-110`}
-                  >
-                    <span className="font-heading text-xl uppercase">{user.name.charAt(0)}</span>
-                  </div>
+                  <Avatar user={user} />
                   <span className="font-body text-theme-text text-xs font-medium">{user.name}</span>
 
                   <div className="text-theme-primary absolute top-2 right-2 hidden opacity-0 transition-opacity group-hover:opacity-100 sm:block">
