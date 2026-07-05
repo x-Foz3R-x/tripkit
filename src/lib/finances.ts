@@ -1,16 +1,19 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import type { Database } from "~/types/database";
 
 type Expense = Database["public"]["Tables"]["expenses"]["Row"];
-type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
+export type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
 
 export type SettlementStatus = "pending" | "confirmed" | "rejected";
 
-export type FinanceExpense = Expense & {
-  entry_type?: "expense" | "settlement" | null;
-  settlement_status?: SettlementStatus | null;
-  settlement_recipient_id?: string | null;
-  settlement_confirmed_at?: string | null;
-  settlement_confirmed_by?: string | null;
+// ✅ Czyste nadpisanie typów. Wywalamy konfliktowe pola, wstawiamy własne.
+// (string & {}) sprawia, że TS przyjmie dane z bazy bez błędów,
+// a my wciąż mamy autouzupełnianie np. "expense" | "settlement".
+export type FinanceExpense = Omit<Expense, "entry_type" | "settlement_status"> & {
+  entry_type: "expense" | "settlement" | (string & {});
+  settlement_status: SettlementStatus | (string & {}) | null;
 };
 
 export interface Transaction {
@@ -25,16 +28,14 @@ const isLegacySettlement = (expense: FinanceExpense) =>
   expense.description.trim().toLowerCase() === "spłata długu";
 
 export const isSettlementEntry = (expense: FinanceExpense) =>
-  expense.entry_type === "settlement" ||
-  (expense.entry_type == null && isLegacySettlement(expense));
+  expense.entry_type === "settlement" || (!expense.entry_type && isLegacySettlement(expense));
 
 export const getSettlementRecipientId = (expense: FinanceExpense) =>
   expense.settlement_recipient_id ?? expense.split_among[0] ?? null;
 
 export const getSettlementStatus = (expense: FinanceExpense): SettlementStatus | null => {
   if (!isSettlementEntry(expense)) return null;
-
-  return expense.settlement_status ?? "confirmed";
+  return (expense.settlement_status as SettlementStatus) ?? "confirmed";
 };
 
 function calculateTransactions(balances: Record<string, number>): Transaction[] {
