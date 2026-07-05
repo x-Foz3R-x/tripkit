@@ -38,7 +38,7 @@ export function PlaylistCard() {
     <div className="bg-theme-card flex flex-col gap-4 rounded-2xl border border-white/5 p-6 shadow-sm">
       <div className="flex items-center justify-between">
         <h2 className="font-body text-theme-text text-lg font-semibold">Stacja DJ-a</h2>
-        <span className="bg-theme-primary/10 text-theme-primary rounded-full px-2 py-0.5 font-mono text-[10px] font-bold tracking-wider uppercase">
+        <span className="bg-theme-primary/10 text-theme-primary rounded-full px-2 py-0.5 font-mono text-xs font-bold tracking-wider uppercase">
           YT Music
         </span>
       </div>

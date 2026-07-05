@@ -1,8 +1,8 @@
-// src/components/modules/finances/expense-form.tsx
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, ReceiptText, UserRound, UsersRound } from "lucide-react";
+import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { supabase } from "~/lib/supabase";
 import { env } from "~/env";
@@ -20,29 +20,32 @@ export function ExpenseForm({ users, activeUserId, onSuccess }: ExpenseFormProps
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [payerId, setPayerId] = useState<string>(activeUserId);
-  const [splitAmong, setSplitAmong] = useState<string[]>(users.map((u) => u.id));
+  const [payerId, setPayerId] = useState(activeUserId);
+  const [splitAmong, setSplitAmong] = useState<string[]>(users.map((user) => user.id));
 
   useEffect(() => {
-    setSplitAmong((prev) => (prev.includes(payerId) ? prev : [...prev, payerId]));
+    setSplitAmong((previous) => (previous.includes(payerId) ? previous : [...previous, payerId]));
   }, [payerId]);
 
   const otherParticipants = splitAmong.filter((id) => id !== payerId);
 
   const parsedAmount = Number(amount);
   const isAmountValid = !Number.isNaN(parsedAmount) && parsedAmount > 0;
+
   const isFormValid =
     description.trim().length > 0 && isAmountValid && otherParticipants.length > 0;
 
   const toggleUser = (userId: string) => {
     if (userId === payerId) return;
-    setSplitAmong((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId],
+
+    setSplitAmong((previous) =>
+      previous.includes(userId) ? previous.filter((id) => id !== userId) : [...previous, userId],
     );
   };
 
   const handleSubmit = async () => {
-    if (!isFormValid) return;
+    if (!isFormValid || isLoading) return;
+
     setIsLoading(true);
 
     const { error } = await supabase.from("expenses").insert({
@@ -54,85 +57,168 @@ export function ExpenseForm({ users, activeUserId, onSuccess }: ExpenseFormProps
     });
 
     setIsLoading(false);
-    if (!error) onSuccess();
-    else console.error("Błąd zapisu wydatku:", error);
+
+    if (!error) {
+      onSuccess();
+    } else {
+      console.error("Błąd zapisu wydatku:", error);
+    }
   };
 
+  const isSubmitDisabled = isLoading || !isFormValid;
+
   return (
-    <div className="pb-safe flex flex-col gap-4 pt-2">
-      <div className="flex flex-col gap-1.5">
-        <label className="text-theme-text font-body text-sm font-medium">Kto zapłacił?</label>
-        <div className="relative">
-          <select
-            value={payerId}
-            onChange={(e) => setPayerId(e.target.value)}
-            className="bg-theme-bg font-body text-theme-text focus:border-theme-primary w-full appearance-none rounded-xl border border-white/10 px-4 py-3 transition-all outline-none"
-          >
-            {users.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.name} {u.id === activeUserId ? "(Ty)" : ""}
-              </option>
-            ))}
-          </select>
-          <div className="text-theme-muted pointer-events-none absolute inset-y-0 right-4 flex items-center">
-            <ChevronDown size={16} />
-          </div>
+    <div className="pb-safe font-mono">
+      <div className="mb-3 flex items-center justify-between border-b border-dashed border-white/15 pb-3">
+        <div className="flex items-center gap-2">
+          <ReceiptText size={17} className="text-theme-primary" />
+
+          <span className="text-[12px] font-bold tracking-[0.13em] text-white uppercase">
+            Dopisz pozycję
+          </span>
         </div>
-      </div>
 
-      <Input
-        label="Za co (Zakupy, Paliwo, etc...)"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
-
-      <div className="relative">
-        <Input
-          label="Kwota"
-          type="number"
-          step="0.01"
-          min="0.01"
-          value={amount ?? ""}
-          onChange={(e) => setAmount(Number(e.target.value))}
-          className={{ input: "pr-12 font-mono text-lg" }}
-        />
-        <span className="text-theme-muted absolute top-1/2 right-4 -translate-y-1/2 font-mono">
-          zł
+        <span className="text-theme-muted rounded-md border border-white/10 px-2 py-1 text-[9px] tracking-wider uppercase">
+          PLN
         </span>
       </div>
 
-      <div className="mt-1 flex flex-col gap-2">
-        <p className="font-body text-theme-text text-sm font-medium">Na kogo dzielimy?</p>
-        <div className="flex flex-wrap gap-2">
-          {users.map((u) => {
-            if (u.id === payerId) return null;
-            const isSelected = splitAmong.includes(u.id);
-            return (
-              <button
-                key={u.id}
-                onClick={() => toggleUser(u.id)}
-                aria-pressed={isSelected}
-                className={`focus-visible:ring-theme-primary focus-visible:ring-offset-theme-bg flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-medium transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95 ${
-                  isSelected
-                    ? "border-theme-primary bg-theme-primary/10 text-theme-primary"
-                    : "bg-theme-bg text-theme-muted border-white/10 hover:border-white/30"
-                }`}
-              >
-                {isSelected && <Check size={12} />}
-                {u.name}
-              </button>
-            );
-          })}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor="expense-payer"
+            className="text-theme-muted flex items-center gap-2 text-[10px] font-bold tracking-[0.14em] uppercase"
+          >
+            <UserRound size={14} className="text-theme-primary" />
+            Płatnik
+          </label>
+
+          <div className="relative">
+            <select
+              id="expense-payer"
+              value={payerId}
+              onChange={(event) => setPayerId(event.target.value)}
+              className="bg-theme-bg text-theme-text focus:border-theme-primary h-11 w-full appearance-none rounded-xl border border-white/10 px-4 pr-11 text-sm transition-colors outline-none"
+            >
+              {users.map((user) => (
+                <option key={user.id} value={user.id}>
+                  {user.name}
+                  {user.id === activeUserId ? " (Ty)" : ""}
+                </option>
+              ))}
+            </select>
+
+            <ChevronDown
+              size={16}
+              className="text-theme-muted pointer-events-none absolute top-1/2 right-4 -translate-y-1/2"
+            />
+          </div>
+        </div>
+
+        <div className="border-t border-dashed border-white/10 pt-3">
+          <Input
+            id="expense-description"
+            label="Nazwa pozycji"
+            value={description}
+            placeholder="np. Zakupy w Żabce"
+            onChange={(event) => setDescription(event.target.value)}
+            className={{
+              input:
+                "bg-theme-bg text-theme-text placeholder:text-theme-muted/45 focus:border-theme-primary border-white/10 font-mono text-sm",
+              label: "font-mono text-sm",
+            }}
+          />
+        </div>
+
+        <div className="relative">
+          <Input
+            id="expense-amount"
+            label="Kwota"
+            type="number"
+            step="0.01"
+            min="0.01"
+            inputMode="decimal"
+            value={amount ?? ""}
+            placeholder="0.00"
+            onChange={(event) =>
+              setAmount(event.target.value === "" ? null : Number(event.target.value))
+            }
+            className={{
+              input:
+                "bg-theme-bg text-theme-text placeholder:text-theme-muted/45 focus:border-theme-primary border-white/10 pr-16 font-mono text-base font-bold",
+              label: "font-mono text-sm",
+            }}
+          />
+
+          <span className="text-theme-primary pointer-events-none absolute top-1/2 right-4 -translate-y-1/2 text-[11px] font-bold">
+            PLN
+          </span>
+        </div>
+
+        <div className="border-t border-dashed border-white/10 pt-3">
+          <div className="flex items-center gap-2">
+            <UsersRound size={15} className="text-theme-primary" />
+
+            <p className="text-theme-muted text-[10px] font-bold tracking-[0.14em] uppercase">
+              Podział kosztu
+            </p>
+          </div>
+
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {users.map((user) => {
+              const isPayer = user.id === payerId;
+              const isSelected = splitAmong.includes(user.id);
+
+              if (isPayer) {
+                return (
+                  <span
+                    key={user.id}
+                    className="border-theme-primary/30 bg-theme-primary/10 text-theme-primary flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[10px] font-bold"
+                  >
+                    <Check size={11} />
+                    {user.name}
+                    <span className="opacity-60">(płaci)</span>
+                  </span>
+                );
+              }
+
+              return (
+                <button
+                  key={user.id}
+                  type="button"
+                  onClick={() => toggleUser(user.id)}
+                  aria-pressed={isSelected}
+                  className={`focus-visible:ring-theme-primary focus-visible:ring-offset-theme-bg flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[10px] font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95 ${
+                    isSelected
+                      ? "border-theme-primary bg-theme-primary/10 text-theme-primary"
+                      : "bg-theme-bg text-theme-muted hover:text-theme-text border-white/10 hover:border-white/30"
+                  }`}
+                >
+                  {isSelected && <Check size={11} />}
+                  {user.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="border-t border-dashed border-white/15 pt-3">
+          <Button
+            type="button"
+            variant={isFormValid ? "default" : "outline"}
+            disabled={isSubmitDisabled}
+            onClick={() => void handleSubmit()}
+            className={`w-full gap-2 font-mono text-[12px] font-bold tracking-[0.13em] uppercase ${
+              isFormValid
+                ? "shadow-lg"
+                : "border-theme-primary/35 text-theme-muted border-dashed bg-transparent shadow-none"
+            }`}
+          >
+            <ReceiptText size={16} />
+            {isLoading ? "Zapisywanie..." : "Zapisz pozycję"}
+          </Button>
         </div>
       </div>
-
-      <button
-        onClick={() => void handleSubmit()}
-        disabled={isLoading || !isFormValid}
-        className="bg-theme-primary font-body hover:bg-theme-primary/90 mt-4 w-full rounded-xl py-3.5 text-[17px] font-bold text-white shadow-lg transition-all active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100"
-      >
-        {isLoading ? "Przetwarzanie..." : "Wrzuć do Kociołka"}
-      </button>
     </div>
   );
 }

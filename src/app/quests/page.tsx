@@ -1,62 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  Flame,
-  Coffee,
-  Droplets,
-  Music,
-  Camera,
-  GlassWater,
-  CheckCircle2,
-  Lock,
-  UserPlus,
-} from "lucide-react";
+import { Coffee, Camera, GlassWater, CheckCircle2, Lock, UserPlus } from "lucide-react";
 import { Link } from "~/components/ui/link";
 
-// Nasza lista zleceń
 const QUESTS = [
-  {
-    id: "q1",
-    title: "Mistrz Ognia",
-    description: "Rozpalenie i utrzymanie ogniska, żeby nie zgasło przez cały wieczór.",
-    points: 5,
-    icon: Flame,
-    color: "text-orange-500",
-    bg: "bg-orange-500/10",
-  },
   {
     id: "q2",
     title: "Kuchenny Alchemik",
     description: "Przygotowanie królewskiego śniadania dla całej ekipy po ciężkiej nocy.",
-    points: 10,
+    points: 3,
     icon: Coffee,
     color: "text-amber-500",
     bg: "bg-amber-500/10",
   },
   {
-    id: "q3",
-    title: "Zaklinacz Wody",
-    description: "Umycie wszystkich naczyń i garnków po wielkim, wspólnym obiedzie.",
-    points: 10,
-    icon: Droplets,
-    color: "text-blue-400",
-    bg: "bg-blue-400/10",
-  },
-  {
-    id: "q4",
-    title: "Główny Bard",
-    description: "Ogarnięcie muzyki na imprezę i pilnowanie, żeby nikt nie psuł kolejki.",
-    points: 5,
-    icon: Music,
-    color: "text-theme-primary",
-    bg: "bg-theme-primary/10",
-  },
-  {
     id: "q5",
     title: "Kronikarz",
-    description: "Uchwycenie najlepszych momentów – zrób min. 50 zdjęć z dzisiejszego dnia.",
-    points: 10,
+    description: "Uchwycenie najlepszych momentów - zrób min. 50 zdjęć z dzisiejszego dnia.",
+    points: 1,
     icon: Camera,
     color: "text-emerald-400",
     bg: "bg-emerald-400/10",
@@ -65,7 +27,7 @@ const QUESTS = [
     id: "q6",
     title: "Eliksirowar",
     description: "Dbanie o to, by kubki nigdy nie były puste podczas wieczornego posiedzenia.",
-    points: 5,
+    points: 1,
     icon: GlassWater,
     color: "text-rose-400",
     bg: "bg-rose-400/10",
@@ -130,7 +92,7 @@ export default function QuestsPage() {
         </div>
         <div>
           <h2 className="font-heading text-theme-text mb-2 text-3xl font-semibold">
-            Tablica zamknięta
+            Tablica niedostępna
           </h2>
           <p className="font-body text-theme-muted mx-auto mb-6 max-w-64 text-sm">
             Musisz posiadać tożsamość, żeby przyjmować zlecenia.

@@ -6,19 +6,22 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "~/lib/utils";
 
 const InputVariants = cva(
-  "peer w-full appearance-none bg-transparent text-text outline-none placeholder:text-muted focus:outline-none disabled:pointer-events-none disabled:opacity-50 transition-shadow",
+  "peer w-full appearance-none bg-transparent text-text outline-none placeholder:text-muted transition-colors focus:outline-none disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         default: "border border-white/10 bg-card focus:border-primary",
-        insetLabel: "border border-white/10 bg-card pb-1 pt-5 focus:border-primary shadow-sm",
+        insetLabel: "border border-white/10 bg-card pt-5 pb-1 shadow-sm focus:border-primary",
       },
       size: {
-        default: "rounded-xl px-4 h-12 text-base",
-        sm: "rounded-lg px-3 h-10 text-sm",
+        default: "h-12 rounded-xl px-4 text-base",
+        sm: "h-10 rounded-lg px-3 text-sm",
       },
     },
-    defaultVariants: { variant: "default", size: "default" },
+    defaultVariants: {
+      variant: "default",
+      size: "default",
+    },
   },
 );
 
@@ -27,7 +30,11 @@ type HTMLInputProps = Omit<HTMLMotionProps<"input">, "size" | "className">;
 export type InputProps = HTMLInputProps &
   VariantProps<typeof InputVariants> & {
     label?: string;
-    className?: { container?: string; input?: string; label?: string };
+    className?: {
+      container?: string;
+      input?: string;
+      label?: string;
+    };
   };
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
@@ -38,12 +45,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const inputId = id ?? uniqueId;
   const autoVariant = label ? "insetLabel" : variant;
 
-  // Do obsługi pływającego labela potrzebujemy wiedzieć, czy jest jakaś wartość
   const [hasValue, setHasValue] = useState(!!value || typeof value === "number" || !!defaultValue);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setHasValue(e.target.value.length > 0);
-    if (onChange) onChange(e);
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setHasValue(event.target.value.length > 0);
+    onChange?.(event);
   };
 
   return (
@@ -54,7 +60,11 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         value={value}
         defaultValue={defaultValue}
         onChange={handleChange}
-        className={cn(InputVariants({ variant: autoVariant, size }), className?.input)}
+        className={cn(
+          InputVariants({ variant: autoVariant, size }),
+          label && "placeholder:opacity-0 focus:placeholder:opacity-100",
+          className?.input,
+        )}
         {...props}
       />
 
@@ -62,7 +72,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         <label
           htmlFor={inputId}
           className={cn(
-            "text-theme-muted peer-focus:text-primary pointer-events-none absolute inset-0 flex origin-top-left items-center overflow-hidden px-4 text-base duration-150 ease-in-out select-none peer-focus:translate-x-0.5 peer-focus:-translate-y-1.5 peer-focus:scale-[0.75]",
+            "text-theme-muted peer-focus:text-primary pointer-events-none absolute inset-0 flex origin-top-left items-center overflow-hidden px-4 text-base transition-all duration-150 ease-in-out select-none peer-focus:translate-x-0.5 peer-focus:-translate-y-1.5 peer-focus:scale-[0.75]",
             hasValue && "text-theme-muted translate-x-0.5 -translate-y-1.5 scale-[0.75]",
             className?.label,
           )}

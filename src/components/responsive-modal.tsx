@@ -53,7 +53,7 @@ export function ResponsiveModal({
   return (
     <Drawer open={isOpen} onOpenChange={setIsOpen}>
       <DrawerContent className="bg-theme-bg/50 pb-safe border-t border-white/10 text-white">
-        <div className="mx-auto mt-2 mb-4 h-1.5 w-12 rounded-full bg-white/20" />
+        <div className="mx-auto mt-2 mb-4 h-1 w-12 rounded-full bg-white/20" />
 
         <DrawerHeader className="text-left">
           <DrawerTitle className="text-xl">{title}</DrawerTitle>

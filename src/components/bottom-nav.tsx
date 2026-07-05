@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Coins, Trophy, Scroll, Package } from "lucide-react";
+import { Home, Landmark, Trophy, Scroll } from "lucide-react";
 import { cn } from "~/lib/utils";
 
 const NAV_ITEMS = [
   { name: "Baza", href: "/", icon: Home },
-  { name: "Kociołek", href: "/finances", icon: Coins },
   { name: "Punktacja", href: "/scoreboard", icon: Trophy },
   { name: "Zlecenia", href: "/quests", icon: Scroll },
-  { name: "Pakowanie", href: "/packing", icon: Package },
+  { name: "Skarbiec", href: "/finances", icon: Landmark },
 ];
 
 export function BottomNav() {
