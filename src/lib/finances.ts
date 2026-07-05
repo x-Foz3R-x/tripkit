@@ -37,7 +37,7 @@ export const getSettlementStatus = (expense: FinanceExpense): SettlementStatus |
   return expense.settlement_status ?? "confirmed";
 };
 
-const calculateTransactions = (balances: Record<string, number>): Transaction[] => {
+function calculateTransactions(balances: Record<string, number>): Transaction[] {
   const debtors = Object.entries(balances)
     .filter(([, balance]) => balance < -0.009)
     .map(([id, balance]) => ({
@@ -81,7 +81,7 @@ const calculateTransactions = (balances: Record<string, number>): Transaction[] 
   }
 
   return transactions;
-};
+}
 
 export function calculateFinances(expenses: FinanceExpense[], users: User[]) {
   const balances: Record<string, number> = Object.fromEntries(users.map((user) => [user.id, 0]));

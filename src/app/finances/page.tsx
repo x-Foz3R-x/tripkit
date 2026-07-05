@@ -1,25 +1,16 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Lock } from "lucide-react";
 import { supabase } from "~/lib/supabase";
 import { env } from "~/env";
+import { ResponsiveModal } from "~/components/responsive-modal";
+import { ExpenseForm } from "~/components/modules/finances/receipt-form";
 import { calculateFinances, type FinanceExpense } from "~/lib/finances";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Link } from "~/components/ui/link";
-import { ExpenseReceipt } from "~/components/modules/finances/expense-receipt";
+import { ExpenseReceipt } from "~/components/modules/finances/receipt";
 import type { Database } from "~/types/database";
-
-const ResponsiveModal = dynamic(
-  () => import("~/components/responsive-modal").then((module) => module.ResponsiveModal),
-  { ssr: false },
-);
-
-const ExpenseForm = dynamic(
-  () => import("~/components/modules/finances/expense-form").then((module) => module.ExpenseForm),
-  { ssr: false },
-);
 
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
 
@@ -35,11 +26,6 @@ export default function FinancesPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const isFinanceEnabled = env.NEXT_PUBLIC_FINANCE_ENABLED === "true";
-
-  const preloadExpenseUi = useCallback(() => {
-    void import("~/components/responsive-modal");
-    void import("~/components/modules/finances/expense-form");
-  }, []);
 
   const loadData = useCallback(async (showInitialLoader = false) => {
     if (showInitialLoader) {
@@ -60,7 +46,7 @@ export default function FinancesPage() {
           .from("expenses")
           .select("*")
           .eq("trip_id", env.NEXT_PUBLIC_TRIP_ID)
-          .order("created_at", { ascending: true }),
+          .order("created_at", { ascending: false }),
       ]);
 
       if (usersRes.error || expensesRes.error) {
@@ -96,24 +82,18 @@ export default function FinancesPage() {
     void loadData(true);
   }, [loadData]);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      preloadExpenseUi();
-    }, 600);
-
-    return () => window.clearTimeout(timer);
-  }, [preloadExpenseUi]);
-
   const refreshWithoutScrollJump = useCallback(async () => {
     const previousScrollPosition = window.scrollY;
 
     await loadData(false);
 
     requestAnimationFrame(() => {
-      window.scrollTo({
-        top: previousScrollPosition,
-        left: 0,
-        behavior: "auto",
+      requestAnimationFrame(() => {
+        window.scrollTo({
+          top: previousScrollPosition,
+          left: 0,
+          behavior: "auto",
+        });
       });
     });
   }, [loadData]);
@@ -122,6 +102,29 @@ export default function FinancesPage() {
     () => calculateFinances(expenses, users),
     [expenses, users],
   );
+
+  const debts = useMemo(
+    () => transactions.filter((transaction) => transaction.from === activeUserId),
+    [activeUserId, transactions],
+  );
+
+  const receivables = useMemo(
+    () => transactions.filter((transaction) => transaction.to === activeUserId),
+    [activeUserId, transactions],
+  );
+
+  const openExpenseModal = useCallback(() => {
+    setIsModalOpen(true);
+  }, []);
+
+  const handleExpenseSuccess = useCallback(() => {
+    setIsModalOpen(false);
+    void refreshWithoutScrollJump();
+  }, [refreshWithoutScrollJump]);
+
+  const handleDataChanged = useCallback(() => {
+    void refreshWithoutScrollJump();
+  }, [refreshWithoutScrollJump]);
 
   if (!mounted) return null;
 
@@ -159,8 +162,7 @@ export default function FinancesPage() {
     <div className="animate-fade-in pb-safe pt-4">
       {isInitialLoading ? (
         <div className="flex flex-col gap-3">
-          <Skeleton className="h-32 w-full rounded-2xl" />
-          <Skeleton className="h-100 w-full rounded-2xl" />
+          <Skeleton className="h-200 w-full rounded-2xl" />
         </div>
       ) : showBlockingError ? (
         <div className="border-theme-primary/20 bg-theme-card flex flex-col items-center gap-3 rounded-2xl border py-10 text-center">
@@ -195,27 +197,16 @@ export default function FinancesPage() {
             users={users}
             activeUserId={activeUserId}
             balance={activeUserBalance}
-            debts={transactions.filter((transaction) => transaction.from === activeUserId)}
-            receivables={transactions.filter((transaction) => transaction.to === activeUserId)}
-            onDataChanged={() => void refreshWithoutScrollJump()}
-            onAddExpense={() => {
-              preloadExpenseUi();
-              setIsModalOpen(true);
-            }}
-            onPrepareAddExpense={preloadExpenseUi}
+            debts={debts}
+            receivables={receivables}
+            onDataChanged={handleDataChanged}
+            onAddExpense={openExpenseModal}
           />
         </>
       )}
 
       <ResponsiveModal isOpen={isModalOpen} setIsOpen={setIsModalOpen}>
-        <ExpenseForm
-          users={users}
-          activeUserId={activeUserId}
-          onSuccess={() => {
-            setIsModalOpen(false);
-            void refreshWithoutScrollJump();
-          }}
-        />
+        <ExpenseForm users={users} activeUserId={activeUserId} onSuccess={handleExpenseSuccess} />
       </ResponsiveModal>
     </div>
   );

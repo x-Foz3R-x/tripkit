@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { Check, ChevronDown, ReceiptText, UserRound, UsersRound } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -16,7 +16,11 @@ interface ExpenseFormProps {
   onSuccess: () => void;
 }
 
-export function ExpenseForm({ users, activeUserId, onSuccess }: ExpenseFormProps) {
+export const ExpenseForm = memo(function ExpenseForm({
+  users,
+  activeUserId,
+  onSuccess,
+}: ExpenseFormProps) {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -221,4 +225,4 @@ export function ExpenseForm({ users, activeUserId, onSuccess }: ExpenseFormProps
       </div>
     </div>
   );
-}
+});
