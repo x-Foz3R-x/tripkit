@@ -5,7 +5,7 @@ import { Lock } from "lucide-react";
 import { supabase } from "~/lib/supabase";
 import { env } from "~/env";
 import { DrawerDialog } from "~/components/responsive-dialog";
-import { DrawerSwipeHandle as QuickDrawer } from "~/components/quick-drawer";
+import { QuickDrawer } from "~/components/quick-drawer";
 import { ExpenseForm } from "~/components/modules/finances/receipt-form";
 import { calculateFinances, type FinanceExpense } from "~/lib/finances";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -122,7 +122,9 @@ export default function FinancesPage() {
       {/* DIAGNOSTYKA LAGU DRAWERA - usuń po znalezieniu przyczyny */}
       {canTestForm && (
         <div className="fixed top-4 right-4 z-100">
-          <QuickDrawer></QuickDrawer>
+          <QuickDrawer title="test" description="test desc" trigger={<button>test</button>}>
+            TEST
+          </QuickDrawer>
         </div>
       )}
 

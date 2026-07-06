@@ -8,7 +8,7 @@ import { env } from "~/env";
 import { Skeleton } from "~/components/ui/skeleton";
 import { TeamsChart } from "~/components/modules/scoreboard/teams-chart";
 import type { Database } from "~/types/database";
-import { DrawerSwipeHandle } from "~/components/quick-drawer";
+import { QuickDrawer } from "~/components/quick-drawer";
 
 type Team = Database["public"]["Tables"]["teams"]["Row"];
 
@@ -47,7 +47,9 @@ export default function ScoreboardPage() {
           <h1 className="font-heading text-theme-text text-5xl font-semibold tracking-wide drop-shadow-sm">
             Scoreboard
           </h1>
-          <DrawerSwipeHandle />
+          <QuickDrawer title="test" description="test desc" trigger={<button>test</button>}>
+            TEST
+          </QuickDrawer>
         </div>
       </header>
 
