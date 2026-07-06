@@ -5,6 +5,7 @@ import { Lock } from "lucide-react";
 import { supabase } from "~/lib/supabase";
 import { env } from "~/env";
 import { DrawerDialog } from "~/components/responsive-dialog";
+import { QuickDrawer } from "~/components/quick-drawer";
 import { ExpenseForm } from "~/components/modules/finances/receipt-form";
 import { calculateFinances, type FinanceExpense } from "~/lib/finances";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -28,10 +29,7 @@ export default function FinancesPage() {
   const isFinanceEnabled = env.NEXT_PUBLIC_FINANCE_ENABLED === "true";
 
   const loadData = useCallback(async (showInitialLoader = false) => {
-    if (showInitialLoader) {
-      setIsInitialLoading(true);
-    }
-
+    if (showInitialLoader) setIsInitialLoading(true);
     setHasError(false);
 
     try {
@@ -41,7 +39,6 @@ export default function FinancesPage() {
           .select("id, name")
           .eq("trip_id", env.NEXT_PUBLIC_TRIP_ID)
           .order("name"),
-
         supabase
           .from("expenses")
           .select("*")
@@ -51,7 +48,6 @@ export default function FinancesPage() {
 
       if (usersRes.error || expensesRes.error) {
         console.error("Błąd wczytywania finansów:", usersRes.error ?? expensesRes.error);
-
         setHasError(true);
         return;
       }
@@ -62,15 +58,12 @@ export default function FinancesPage() {
       console.error("Błąd wczytywania finansów:", error);
       setHasError(true);
     } finally {
-      if (showInitialLoader) {
-        setIsInitialLoading(false);
-      }
+      if (showInitialLoader) setIsInitialLoading(false);
     }
   }, []);
 
   useEffect(() => {
     const storedUserId = localStorage.getItem("tripkit_user_id");
-
     setMounted(true);
 
     if (!storedUserId) {
@@ -84,16 +77,10 @@ export default function FinancesPage() {
 
   const refreshWithoutScrollJump = useCallback(async () => {
     const previousScrollPosition = window.scrollY;
-
     await loadData(false);
-
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        window.scrollTo({
-          top: previousScrollPosition,
-          left: 0,
-          behavior: "auto",
-        });
+        window.scrollTo({ top: previousScrollPosition, left: 0, behavior: "auto" });
       });
     });
   }, [loadData]);
@@ -113,9 +100,7 @@ export default function FinancesPage() {
     [activeUserId, transactions],
   );
 
-  const openExpenseModal = useCallback(() => {
-    setIsModalOpen(true);
-  }, []);
+  const openExpenseModal = useCallback(() => setIsModalOpen(true), []);
 
   const handleExpenseSuccess = useCallback(() => {
     setIsModalOpen(false);
@@ -128,46 +113,59 @@ export default function FinancesPage() {
 
   if (!mounted) return null;
 
-  if (!isFinanceEnabled || !activeUserId) {
-    return (
-      <div className="animate-fade-in flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <div className="bg-theme-card text-theme-muted flex h-16 w-16 items-center justify-center rounded-full border border-white/5 shadow-sm">
-          <Lock size={28} />
-        </div>
-
-        <div>
-          <h2 className="font-heading text-theme-text mb-2 text-3xl font-semibold">
-            Skarbiec zamknięty
-          </h2>
-
-          <p className="font-body text-theme-muted mx-auto mb-6 max-w-64 text-sm">
-            {!isFinanceEnabled
-              ? "Skarbiec jest chwilowo zamknięty. Wspólne rozliczenia pojawią się, gdy zacznie się wyjazd."
-              : "Musisz najpierw powiedzieć nam, kim jesteś w Księdze Wyjazdu."}
-          </p>
-
-          <Link.Arrow href="/" variant="primary" size="base">
-            Wróć do Bazy
-          </Link.Arrow>
-        </div>
-      </div>
-    );
-  }
-
-  const activeUserBalance = balances[activeUserId] ?? 0;
-
+  const activeUserBalance = activeUserId ? (balances[activeUserId] ?? 0) : 0;
   const showBlockingError = hasError && users.length === 0 && expenses.length === 0;
+  const canTestForm = Boolean(activeUserId) && users.length > 0;
 
   return (
     <div className="animate-fade-in pb-safe pt-4">
-      {isInitialLoading ? (
+      {/* DIAGNOSTYKA LAGU DRAWERA - usuń po znalezieniu przyczyny */}
+      {canTestForm && (
+        <div className="fixed right-4 bottom-4 z-100">
+          <QuickDrawer
+            trigger={
+              <button className="bg-theme-primary rounded-full px-4 py-3 text-xs font-bold text-white shadow-lg active:scale-95">
+                Test drawer
+              </button>
+            }
+            title="Dopisz pozycję (test)"
+            description="Ten sam formularz, inny, dużo prostszy drawer - bez blura, bez swipe handle."
+          >
+            <ExpenseForm
+              users={users}
+              activeUserId={activeUserId!}
+              onSuccess={() => void refreshWithoutScrollJump()}
+            />
+          </QuickDrawer>
+        </div>
+      )}
+
+      {!isFinanceEnabled || !activeUserId ? (
+        <div className="animate-fade-in flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+          <div className="bg-theme-card text-theme-muted flex h-16 w-16 items-center justify-center rounded-full border border-white/5 shadow-sm">
+            <Lock size={28} />
+          </div>
+          <div>
+            <h2 className="font-heading text-theme-text mb-2 text-3xl font-semibold">
+              Skarbiec zamknięty
+            </h2>
+            <p className="font-body text-theme-muted mx-auto mb-6 max-w-64 text-sm">
+              {!isFinanceEnabled
+                ? "Skarbiec jest chwilowo zamknięty. Wspólne rozliczenia pojawią się, gdy zacznie się wyjazd."
+                : "Musisz najpierw powiedzieć nam, kim jesteś w Księdze Wyjazdu."}
+            </p>
+            <Link.Arrow href="/" variant="primary" size="base">
+              Wróć do Bazy
+            </Link.Arrow>
+          </div>
+        </div>
+      ) : isInitialLoading ? (
         <div className="flex flex-col gap-3">
           <Skeleton className="h-200 w-full rounded-2xl" />
         </div>
       ) : showBlockingError ? (
         <div className="border-theme-primary/20 bg-theme-card flex flex-col items-center gap-3 rounded-2xl border py-10 text-center">
           <span className="font-body text-theme-muted text-sm">Nie udało się wczytać danych.</span>
-
           <button
             type="button"
             onClick={() => void loadData(true)}
@@ -181,7 +179,6 @@ export default function FinancesPage() {
           {hasError && (
             <div className="border-theme-primary/20 bg-theme-primary/5 text-theme-muted mb-3 flex items-center justify-between gap-3 rounded-xl border px-3 py-2 text-xs">
               <span>Nie udało się odświeżyć danych.</span>
-
               <button
                 type="button"
                 onClick={() => void loadData(false)}
@@ -206,7 +203,11 @@ export default function FinancesPage() {
       )}
 
       <DrawerDialog isOpen={isModalOpen} setIsOpen={setIsModalOpen}>
-        <ExpenseForm users={users} activeUserId={activeUserId} onSuccess={handleExpenseSuccess} />
+        <ExpenseForm
+          users={users}
+          activeUserId={activeUserId ?? ""}
+          onSuccess={handleExpenseSuccess}
+        />
       </DrawerDialog>
     </div>
   );

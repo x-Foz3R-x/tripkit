@@ -1,9 +1,7 @@
-// src/components/modules/hub/today-schedule.tsx
 "use client";
 
 import { Navigation, Home, Flame, ShoppingBasket, ForkKnife } from "lucide-react";
 
-// Tutaj wpisujemy plan tylko na nadchodzący / obecny dzień
 const TODAY_SCHEDULE = [
   {
     time: "8:00",
@@ -42,13 +40,13 @@ const TODAY_SCHEDULE = [
   },
 ];
 
-export function TodaySchedule() {
+export function TodayScheduleWidget() {
   return (
     <div className="bg-theme-card flex flex-col gap-4 rounded-2xl border border-white/5 p-6 shadow-sm">
       <div className="mb-2 flex items-center justify-between">
         <h2 className="font-body text-theme-text text-lg font-semibold">Plan na dziś</h2>
         <span className="text-theme-primary bg-theme-primary/10 rounded-full px-2 py-0.5 font-mono text-xs font-bold tracking-wider uppercase">
-          Wtorek
+          Wtorek, 7 lipca
         </span>
       </div>
 

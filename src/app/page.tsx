@@ -1,9 +1,7 @@
-"use client";
-
 import { MapPin, Navigation } from "lucide-react";
 import { WelcomeCard } from "~/components/modules/hub/welcome-card";
-import { PlaylistCard } from "~/components/modules/hub/playlist-card";
-import { TodaySchedule } from "~/components/modules/hub/today-schedule";
+import { PlaylistWidget } from "~/components/modules/hub/playlist-card";
+import { TodayScheduleWidget } from "~/components/modules/hub/today-schedule";
 import { PackingWidget } from "~/components/modules/hub/packing-widget";
 
 export default function HomePage() {
@@ -43,10 +41,9 @@ export default function HomePage() {
           </a>
         </div>
 
-        <TodaySchedule />
+        <TodayScheduleWidget />
         <PackingWidget />
-
-        <PlaylistCard />
+        <PlaylistWidget />
       </section>
     </div>
   );

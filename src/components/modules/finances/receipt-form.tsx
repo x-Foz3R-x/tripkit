@@ -192,7 +192,7 @@ export const ExpenseForm = memo(function ExpenseForm({
                   type="button"
                   onClick={() => toggleUser(user.id)}
                   aria-pressed={isSelected}
-                  className={`focus-visible:ring-theme-primary focus-visible:ring-offset-theme-bg flex items-center gap-1 rounded-full border px-2.5 py-1.5 text-[10px] font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95 ${
+                  className={`focus-visible:ring-theme-primary focus-visible:ring-offset-theme-bg flex items-center gap-1 rounded-full border px-3 py-2 text-[11px] font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95 ${
                     isSelected
                       ? "border-theme-primary bg-theme-primary/10 text-theme-primary"
                       : "bg-theme-bg text-theme-muted hover:text-theme-text border-white/10 hover:border-white/30"

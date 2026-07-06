@@ -33,7 +33,7 @@ const PLAYLISTS = [
   },
 ];
 
-export function PlaylistCard() {
+export function PlaylistWidget() {
   return (
     <div className="bg-theme-card flex flex-col gap-4 rounded-2xl border border-white/5 p-6 shadow-sm">
       <div className="flex items-center justify-between">

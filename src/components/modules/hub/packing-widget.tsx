@@ -1,4 +1,3 @@
-// src/components/modules/hub/packing-widget.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -67,7 +66,6 @@ export function PackingWidget() {
 
   return (
     <>
-      {/* Przycisk na ekranie głównym */}
       <button
         onClick={() => setIsOpen(true)}
         className="border-theme-primary/20 bg-theme-primary/5 hover:bg-theme-primary/10 flex flex-col gap-3 rounded-2xl border p-5 text-left shadow-sm transition-colors active:scale-[0.98]"
