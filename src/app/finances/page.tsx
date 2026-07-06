@@ -131,11 +131,12 @@ export default function FinancesPage() {
             title="Dopisz pozycję (test)"
             description="Ten sam formularz, inny, dużo prostszy drawer - bez blura, bez swipe handle."
           >
-            <ExpenseForm
+            TEST
+            {/* <ExpenseForm
               users={users}
               activeUserId={activeUserId!}
               onSuccess={() => void refreshWithoutScrollJump()}
-            />
+            /> */}
           </QuickDrawer>
         </div>
       )}
