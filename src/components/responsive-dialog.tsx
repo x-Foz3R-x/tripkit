@@ -1,3 +1,4 @@
+// src/components/responsive-dialog.tsx
 "use client";
 
 import * as React from "react";
@@ -49,7 +50,7 @@ export function DrawerDialog({
   }
 
   return (
-    <Drawer open={isOpen} onOpenChange={setIsOpen}>
+    <Drawer open={isOpen} onOpenChange={setIsOpen} repositionInputs={false}>
       <DrawerContent className="bg-theme-bg pb-safe border-t border-white/10 text-white outline-none">
         {(title ?? description) && (
           <DrawerHeader className="text-left">
