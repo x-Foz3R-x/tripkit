@@ -121,7 +121,7 @@ export default function FinancesPage() {
     <div className="animate-fade-in pb-safe pt-4">
       {/* DIAGNOSTYKA LAGU DRAWERA - usuń po znalezieniu przyczyny */}
       {canTestForm && (
-        <div className="fixed right-4 bottom-4 z-100">
+        <div className="fixed top-4 right-4 z-100">
           <QuickDrawer
             trigger={
               <button className="bg-theme-primary rounded-full px-4 py-3 text-xs font-bold text-white shadow-lg active:scale-95">
