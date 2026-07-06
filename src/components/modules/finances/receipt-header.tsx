@@ -26,10 +26,6 @@ export const ReceiptHeader = memo(function ReceiptHeader({
         Codziennie równe rachunki
       </p>
 
-      <p className="text-theme-muted mt-0.5 text-[10px] tracking-tight uppercase">
-        Główna Kapituła Wyjazdu
-      </p>
-
       <div className="text-theme-muted/70 mt-2 flex w-3/4 justify-between">
         <span className="text-[10px]">NIP 213769420</span>
         <span className="text-[10px]">nr {tripIdShort}</span>

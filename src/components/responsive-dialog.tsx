@@ -55,8 +55,11 @@ export function DrawerDialog({
       onOpenChange={setIsOpen}
       shouldScaleBackground={false}
       repositionInputs={false}
+      direction="bottom"
     >
       <DrawerContent className="bg-theme-bg pb-safe border-t border-white/10 text-white outline-none">
+        <div className="" />
+
         {(title ?? description) && (
           <DrawerHeader className="text-left">
             {title && <DrawerTitle>{title}</DrawerTitle>}

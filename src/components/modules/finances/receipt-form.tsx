@@ -128,20 +128,9 @@ export const ExpenseForm = memo(function ExpenseForm({
             onChange={(event) => setDescription(event.target.value)}
             className={{
               input:
-                "bg-theme-bg text-theme-text placeholder:text-theme-muted/45 focus:border-theme-primary text-md border-white/10 font-mono",
-              label: "text-md font-mono",
+                "bg-theme-bg text-theme-text placeholder:text-theme-muted/45 focus:border-theme-primary border-white/10 font-mono",
+              label: "font-mono",
             }}
-          />
-        </div>
-
-        <div className="border-t border-dashed border-white/10 pt-3">
-          <input
-            id="expense-description"
-            // label="Nazwa pozycji"
-            value={description}
-            placeholder="np. Zakupy w Żabce"
-            onChange={(event) => setDescription(event.target.value)}
-            className="bg-theme-bg text-theme-text placeholder:text-theme-muted/45 focus:border-theme-primary text-md border-white/10 font-mono"
           />
         </div>
 
@@ -160,8 +149,8 @@ export const ExpenseForm = memo(function ExpenseForm({
             }
             className={{
               input:
-                "bg-theme-bg text-theme-text placeholder:text-theme-muted/45 focus:border-theme-primary border-white/10 pr-16 font-mono text-base font-bold",
-              label: "text-md font-mono",
+                "bg-theme-bg text-theme-text placeholder:text-theme-muted/45 focus:border-theme-primary border-white/10 pr-16 font-mono font-bold",
+              label: "font-mono",
             }}
           />
 
