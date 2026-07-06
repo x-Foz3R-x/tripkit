@@ -1,7 +1,7 @@
 // src/components/modules/hub/today-schedule.tsx
 "use client";
 
-import { Navigation, Home, Flame, ShoppingBasket } from "lucide-react";
+import { Navigation, Home, Flame, ShoppingBasket, ForkKnife } from "lucide-react";
 
 // Tutaj wpisujemy plan tylko na nadchodzący / obecny dzień
 const TODAY_SCHEDULE = [
@@ -23,11 +23,18 @@ const TODAY_SCHEDULE = [
     time: "14:00",
     title: "Zakupy",
     icon: ShoppingBasket,
-    color: "text-orange-500",
-    bg: "bg-orange-500/10",
+    color: "text-cyan-500",
+    bg: "bg-cyan-500/10",
   },
   {
     time: "16:00",
+    title: "Obiad",
+    icon: ForkKnife,
+    color: "text-amber-500",
+    bg: "bg-amber-500/10",
+  },
+  {
+    time: "17:00",
     title: "Zabawa",
     icon: Flame,
     color: "text-orange-500",
