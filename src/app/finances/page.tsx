@@ -5,7 +5,6 @@ import { Lock } from "lucide-react";
 import { supabase } from "~/lib/supabase";
 import { env } from "~/env";
 import { DrawerDialog } from "~/components/responsive-dialog";
-import { QuickDrawer } from "~/components/quick-drawer";
 import { ExpenseForm } from "~/components/modules/finances/receipt-form";
 import { calculateFinances, type FinanceExpense } from "~/lib/finances";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -115,19 +114,9 @@ export default function FinancesPage() {
 
   const activeUserBalance = activeUserId ? (balances[activeUserId] ?? 0) : 0;
   const showBlockingError = hasError && users.length === 0 && expenses.length === 0;
-  const canTestForm = Boolean(activeUserId) && users.length > 0;
 
   return (
     <div className="animate-fade-in pb-safe pt-4">
-      {/* DIAGNOSTYKA LAGU DRAWERA - usuń po znalezieniu przyczyny */}
-      {canTestForm && (
-        <div className="fixed top-4 right-4 z-100">
-          <QuickDrawer title="test" description="test desc" trigger={<button>test</button>}>
-            TEST
-          </QuickDrawer>
-        </div>
-      )}
-
       {!isFinanceEnabled || !activeUserId ? (
         <div className="animate-fade-in flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
           <div className="bg-theme-card text-theme-muted flex h-16 w-16 items-center justify-center rounded-full border border-white/5 shadow-sm">

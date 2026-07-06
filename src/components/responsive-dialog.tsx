@@ -1,4 +1,3 @@
-// src/components/responsive-modal.tsx
 "use client";
 
 import * as React from "react";
@@ -50,15 +49,15 @@ export function DrawerDialog({
   }
 
   return (
-    <Drawer open={isOpen} onOpenChange={setIsOpen} showSwipeHandle>
-      <DrawerContent className="bg-theme-bg pb-safe border-t border-white/10 text-white">
+    <Drawer open={isOpen} onOpenChange={setIsOpen}>
+      <DrawerContent className="bg-theme-bg pb-safe border-t border-white/10 text-white outline-none">
         {(title ?? description) && (
           <DrawerHeader className="text-left">
             {title && <DrawerTitle>{title}</DrawerTitle>}
             {description && <DrawerDescription>{description}</DrawerDescription>}
           </DrawerHeader>
         )}
-        <div className="max-h-[70dvh] overflow-y-auto p-6">{children}</div>
+        <div className="max-h-[75dvh] overflow-y-auto p-6">{children}</div>
       </DrawerContent>
     </Drawer>
   );
