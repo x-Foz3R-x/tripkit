@@ -33,7 +33,7 @@ export function QuickDrawer({ trigger, title, description, children }: QuickDraw
   if (isDesktop) {
     return (
       <Dialog>
-        <DialogTrigger asChild>{trigger}</DialogTrigger>
+        <DialogTrigger>{trigger}</DialogTrigger>
         <DialogContent className="sm:max-w-106.25">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
@@ -47,7 +47,7 @@ export function QuickDrawer({ trigger, title, description, children }: QuickDraw
 
   return (
     <DrawerPrimitive.Root>
-      <DrawerPrimitive.Trigger asChild>{trigger}</DrawerPrimitive.Trigger>
+      <DrawerPrimitive.Trigger>{trigger}</DrawerPrimitive.Trigger>
       <DrawerPrimitive.Portal>
         <DrawerPrimitive.Backdrop className="fixed inset-0 z-50 bg-black/50 transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0" />
         <DrawerPrimitive.Viewport className="fixed inset-0 z-50">
