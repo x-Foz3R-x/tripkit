@@ -5,7 +5,7 @@ import { Lock } from "lucide-react";
 import { supabase } from "~/lib/supabase";
 import { env } from "~/env";
 import { DrawerDialog } from "~/components/responsive-dialog";
-import { QuickDrawer } from "~/components/quick-drawer";
+import { DrawerSwipeHandle as QuickDrawer } from "~/components/quick-drawer";
 import { ExpenseForm } from "~/components/modules/finances/receipt-form";
 import { calculateFinances, type FinanceExpense } from "~/lib/finances";
 import { Skeleton } from "~/components/ui/skeleton";
@@ -122,22 +122,7 @@ export default function FinancesPage() {
       {/* DIAGNOSTYKA LAGU DRAWERA - usuń po znalezieniu przyczyny */}
       {canTestForm && (
         <div className="fixed top-4 right-4 z-100">
-          <QuickDrawer
-            trigger={
-              <button className="bg-theme-primary rounded-full px-4 py-3 text-xs font-bold text-white shadow-lg active:scale-95">
-                Test drawer
-              </button>
-            }
-            title="Dopisz pozycję (test)"
-            description="Ten sam formularz, inny, dużo prostszy drawer - bez blura, bez swipe handle."
-          >
-            TEST
-            {/* <ExpenseForm
-              users={users}
-              activeUserId={activeUserId!}
-              onSuccess={() => void refreshWithoutScrollJump()}
-            /> */}
-          </QuickDrawer>
+          <QuickDrawer></QuickDrawer>
         </div>
       )}
 

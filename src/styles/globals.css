@@ -70,3 +70,7 @@
 @utility pb-safe {
   padding-bottom: env(safe-area-inset-bottom);
 }
+
+body {
+  position: relative;
+}
