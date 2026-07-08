@@ -165,6 +165,7 @@ export type Database = {
           created_at: string | null
           id: string
           name: string
+          phone: string | null
           team_id: string | null
           trip_id: string
           updated_at: string | null
@@ -174,6 +175,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name: string
+          phone?: string | null
           team_id?: string | null
           trip_id: string
           updated_at?: string | null
@@ -183,6 +185,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+          phone?: string | null
           team_id?: string | null
           trip_id?: string
           updated_at?: string | null

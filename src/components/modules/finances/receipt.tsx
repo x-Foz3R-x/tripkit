@@ -10,7 +10,9 @@ import { ReceiptSummary } from "~/components/modules/finances/receipt-summary";
 import { ReceiptPaymentSection } from "~/components/modules/finances/receipt-payment-section";
 import { ReceiptFooter } from "~/components/modules/finances/receipt-footer";
 
-type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
+type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name"> & {
+  phone?: string | null;
+};
 
 interface ExpenseReceiptProps {
   expenses: FinanceExpense[];
@@ -50,6 +52,12 @@ export const ExpenseReceipt = memo(function ExpenseReceipt({
     [settlements],
   );
 
+  // DODAŁEM: Szukamy imienia aktywnego użytkownika
+  const activeUserName = useMemo(
+    () => users.find((u) => u.id === activeUserId)?.name ?? "Nieznany",
+    [users, activeUserId],
+  );
+
   const tripIdShort = env.NEXT_PUBLIC_TRIP_ID.split("-")[0]?.toUpperCase() ?? "01103";
 
   const issuedAt = new Date().toLocaleString("pl-PL", {
@@ -62,7 +70,13 @@ export const ExpenseReceipt = memo(function ExpenseReceipt({
 
   return (
     <div className="from-theme-primary/10 selection:bg-theme-primary/30 mx-auto w-full max-w-sm rounded-2xl border border-white/10 bg-linear-to-b to-transparent p-6 font-mono text-white/90 shadow-2xl">
-      <ReceiptHeader tripIdShort={tripIdShort} issuedAt={issuedAt} onAddExpense={onAddExpense} />
+      {/* DODAŁEM: activeUserName */}
+      <ReceiptHeader
+        tripIdShort={tripIdShort}
+        issuedAt={issuedAt}
+        activeUserName={activeUserName}
+        onAddExpense={onAddExpense}
+      />
 
       <ReceiptExpenseList expenses={regularExpenses} users={users} />
 

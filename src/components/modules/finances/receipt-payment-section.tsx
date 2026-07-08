@@ -13,7 +13,10 @@ import {
   type Transaction,
 } from "~/lib/finances";
 
-type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
+// Zaktualizowany typ o 'phone'
+type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name"> & {
+  phone?: string | null;
+};
 
 interface ReceiptPaymentSectionProps {
   settlements: FinanceExpense[];
@@ -336,17 +339,38 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
               <span className="text-theme-muted/60 text-[11px] tracking-wider">Musisz oddać</span>
 
               {debts.map((debt) => {
-                const creditor = getUserName(debt.to);
+                const creditorObj = users.find((u) => u.id === debt.to);
+                const creditor = creditorObj?.name ?? "Nieznany";
+                const creditorPhone = creditorObj?.phone; // Pobieramy numer
+
                 const pending = findPendingToRecipient(debt.to);
                 const isConfirming = confirmingDebtTo === debt.to;
                 const isReporting = processingKey === `report:${debt.to}`;
 
                 return (
-                  <div key={debt.to} className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-1.5 text-white/90">
-                      <ArrowUpRight size={14} className="text-theme-primary shrink-0" />
-                      {creditor}
-                    </span>
+                  <div
+                    key={debt.to}
+                    className="flex items-center justify-between gap-2 border-t border-dashed border-white/5 pt-2 first:border-0 first:pt-0"
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      <span className="flex items-center gap-1.5 text-white/90">
+                        <ArrowUpRight size={14} className="text-theme-primary shrink-0" />
+                        {creditor}
+                      </span>
+
+                      {/* Wyświetlanie BLIK jeśli numer istnieje */}
+                      {creditorPhone && (
+                        <span className="text-theme-muted/70 mt-0.5 ml-5 font-mono text-[9px] tracking-widest uppercase">
+                          BLIK:{" "}
+                          <a
+                            href={`tel:${creditorPhone.replace(/\s/g, "")}`}
+                            className="text-white/80 underline decoration-dotted underline-offset-2"
+                          >
+                            {creditorPhone}
+                          </a>
+                        </span>
+                      )}
+                    </div>
 
                     {pending ? (
                       <div className="flex items-center gap-2">

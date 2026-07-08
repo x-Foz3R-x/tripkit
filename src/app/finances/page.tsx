@@ -12,7 +12,10 @@ import { Link } from "~/components/ui/link";
 import { ExpenseReceipt } from "~/components/modules/finances/receipt";
 import type { Database } from "~/types/database";
 
-type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
+// DODAŁEM: & { phone?: string | null }
+type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name"> & {
+  phone?: string | null;
+};
 
 export default function FinancesPage() {
   const [mounted, setMounted] = useState(false);
@@ -35,7 +38,8 @@ export default function FinancesPage() {
       const [usersRes, expensesRes] = await Promise.all([
         supabase
           .from("users")
-          .select("id, name")
+          // DODAŁEM: pobieranie "phone"
+          .select("id, name, phone")
           .eq("trip_id", env.NEXT_PUBLIC_TRIP_ID)
           .order("name"),
         supabase

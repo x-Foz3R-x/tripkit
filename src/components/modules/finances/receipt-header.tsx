@@ -6,12 +6,14 @@ import { Landmark, Plus } from "lucide-react";
 interface ReceiptHeaderProps {
   tripIdShort: string;
   issuedAt: string;
+  activeUserName: string;
   onAddExpense: () => void;
 }
 
 export const ReceiptHeader = memo(function ReceiptHeader({
   tripIdShort,
   issuedAt,
+  activeUserName,
   onAddExpense,
 }: ReceiptHeaderProps) {
   return (
@@ -32,7 +34,7 @@ export const ReceiptHeader = memo(function ReceiptHeader({
       </div>
 
       <div className="text-theme-muted/70 mt-1 flex w-3/4 justify-between">
-        <span className="text-[10px]">SKARBNIK: Brak</span>
+        <span className="text-[10px]">KLIENT: {activeUserName}</span>
         <span className="text-[10px]">STAN. 01</span>
       </div>
 
