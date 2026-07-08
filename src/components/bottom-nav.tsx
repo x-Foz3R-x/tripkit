@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Landmark, Trophy } from "lucide-react";
+import { Home, Landmark, Trophy, ShoppingBasket } from "lucide-react";
 import { cn } from "~/lib/utils";
 
 const NAV_ITEMS = [
   { name: "Baza", href: "/", icon: Home },
   { name: "Punktacja", href: "/scoreboard", icon: Trophy },
-  // { name: "Zlecenia", href: "/quests", icon: Scroll },
+  { name: "Lista zakupów", href: "/shopping", icon: ShoppingBasket },
   { name: "Skarbiec", href: "/finances", icon: Landmark },
 ];
 

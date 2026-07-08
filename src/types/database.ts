@@ -94,6 +94,54 @@ export type Database = {
           },
         ]
       }
+      shopping_list: {
+        Row: {
+          added_by: string
+          created_at: string
+          for_users: string[]
+          id: string
+          is_completed: boolean
+          item_name: string
+          trip_id: string
+          updated_at: string
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          for_users?: string[]
+          id?: string
+          is_completed?: boolean
+          item_name: string
+          trip_id: string
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          for_users?: string[]
+          id?: string
+          is_completed?: boolean
+          item_name?: string
+          trip_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shopping_list_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shopping_list_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teams: {
         Row: {
           color_hex: string | null

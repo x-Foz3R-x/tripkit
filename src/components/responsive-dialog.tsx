@@ -26,7 +26,7 @@ interface DrawerDialogProps {
   children: React.ReactNode;
 }
 
-export function DrawerDialog({
+export function ResponsiveDialog({
   isOpen,
   setIsOpen,
   title,

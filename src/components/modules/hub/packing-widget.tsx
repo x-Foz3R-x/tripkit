@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Backpack, ChevronRight } from "lucide-react";
 import { env } from "~/env";
-import { DrawerDialog } from "~/components/responsive-dialog";
+import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { Checkbox } from "~/components/ui/checkbox";
 
 const PACKING_LIST = [
@@ -93,7 +93,7 @@ export function PackingWidget() {
         </div>
       </button>
 
-      <DrawerDialog isOpen={isOpen} setIsOpen={setIsOpen}>
+      <ResponsiveDialog isOpen={isOpen} setIsOpen={setIsOpen}>
         {!activeUserId ? (
           <p className="font-body text-theme-muted p-4 text-center text-sm">
             Wybierz swój profil w Bazie, żeby odblokować pakowanie.
@@ -126,7 +126,7 @@ export function PackingWidget() {
             })}
           </div>
         )}
-      </DrawerDialog>
+      </ResponsiveDialog>
     </>
   );
 }
