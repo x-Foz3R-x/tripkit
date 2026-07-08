@@ -405,7 +405,9 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
 
           {receivables.length > 0 && (
             <div className="flex flex-col gap-2.5">
-              <span className="text-theme-muted/60 text-[11px] tracking-wider">Czeka na zwrot</span>
+              <span className="text-theme-muted/60 text-[11px] tracking-wider">
+                Czekasz na zwrot od
+              </span>
 
               {receivables.map((receivable) => {
                 const debtor = getUserName(receivable.from);
