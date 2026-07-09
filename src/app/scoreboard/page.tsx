@@ -1,3 +1,4 @@
+// src/app/scoreboard/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -6,11 +7,13 @@ import { supabase } from "~/lib/supabase";
 import { env } from "~/env";
 import { Skeleton } from "~/components/ui/skeleton";
 import { TeamsChart } from "~/components/modules/scoreboard/teams-chart";
+import { WheelOfFortune } from "~/components/modules/scoreboard/wheel-of-fortune";
 import type { Database } from "~/types/database";
 
 type Team = Database["public"]["Tables"]["teams"]["Row"];
-// Pobieramy ID, imię i powiązanie z drużyną
-type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name" | "team_id">;
+type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name" | "team_id"> & {
+  color_hex?: string | null;
+};
 
 export default function ScoreboardPage() {
   const [mounted, setMounted] = useState(false);
@@ -24,7 +27,6 @@ export default function ScoreboardPage() {
     const fetchData = async () => {
       setIsLoading(true);
 
-      // Pobieramy równolegle drużyny ORAZ użytkowników
       const [teamsRes, usersRes] = await Promise.all([
         supabase
           .from("teams")
@@ -58,9 +60,6 @@ export default function ScoreboardPage() {
 
   if (!mounted) return null;
 
-  // Filtrujemy graczy, którzy jeszcze nie mają przypisanej drużyny (opcjonalnie)
-  const unassignedUsers = users.filter((u) => !u.team_id);
-
   return (
     <div className="animate-fade-in pb-safe flex flex-col gap-6">
       <header className="flex items-center justify-between pt-4 pb-2">
@@ -71,7 +70,7 @@ export default function ScoreboardPage() {
         </div>
       </header>
 
-      {/* --- SEKCJA 1: WYKRES WYNIKÓW --- */}
+      {/* --- WYNIKI --- */}
       <section className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <Trophy size={18} className="text-theme-accent" />
@@ -89,7 +88,13 @@ export default function ScoreboardPage() {
         )}
       </section>
 
-      {/* --- SEKCJA 2: SKŁADY DRUŻYN (Zamiast "Za co punkty") --- */}
+      {!isLoading && users.length > 0 && (
+        <section className="mt-2 flex flex-col gap-3">
+          <WheelOfFortune users={users} />
+        </section>
+      )}
+
+      {/* --- SKŁADY (Zwięzła sekcja) --- */}
       <section className="mt-2 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <Users size={18} className="text-theme-primary" />
@@ -98,48 +103,34 @@ export default function ScoreboardPage() {
 
         {isLoading ? (
           <div className="flex flex-col gap-3">
-            <Skeleton className="h-24 w-full rounded-2xl" />
-            <Skeleton className="h-24 w-full rounded-2xl" />
+            <Skeleton className="h-12 w-full rounded-xl" />
+            <Skeleton className="h-12 w-full rounded-xl" />
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col">
             {teams.map((team) => {
-              // Szukamy członków konkretnej drużyny
               const teamMembers = users.filter((u) => u.team_id === team.id);
 
               return (
                 <div
                   key={team.id}
-                  className="bg-theme-card flex flex-col gap-2 rounded-2xl border border-white/5 p-4 shadow-sm transition-all hover:bg-white/5"
+                  className="flex flex-col gap-1 border-b border-dashed border-white/10 py-3 first:pt-0 last:border-0 last:pb-0"
                 >
-                  <div className="flex items-center gap-2 border-b border-white/5 pb-2">
-                    {/* Wyświetlamy kolor drużyny, jeśli jest w bazie */}
+                  <div className="flex items-center gap-2">
                     {team.color_hex && (
                       <div
-                        className="h-3 w-3 shrink-0 rounded-full shadow-sm"
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
                         style={{ backgroundColor: team.color_hex }}
                       />
                     )}
-                    <h3 className="font-heading text-xl tracking-wide text-white">{team.name}</h3>
+                    <h3 className="font-heading text-lg tracking-wide text-white">{team.name}</h3>
                   </div>
 
-                  <ul className="flex flex-col gap-1.5 pt-1 pl-1">
-                    {teamMembers.length > 0 ? (
-                      teamMembers.map((member) => (
-                        <li
-                          key={member.id}
-                          className="font-body flex items-center gap-2 text-[15px] font-medium text-white/80"
-                        >
-                          <div className="bg-theme-primary/50 h-1 w-1 rounded-full" />
-                          {member.name}
-                        </li>
-                      ))
-                    ) : (
-                      <li className="font-body text-theme-muted/50 text-sm italic">
-                        Brak zawodników
-                      </li>
-                    )}
-                  </ul>
+                  <p className="font-body text-sm text-white/70">
+                    {teamMembers.length > 0
+                      ? teamMembers.map((m) => m.name).join(", ")
+                      : "Brak zawodników"}
+                  </p>
                 </div>
               );
             })}
