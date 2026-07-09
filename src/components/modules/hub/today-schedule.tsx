@@ -1,38 +1,31 @@
 "use client";
 
-import { Navigation, Home, Flame, ShoppingBasket, ForkKnife } from "lucide-react";
+import { Pizza, Waves, Flame, Volleyball } from "lucide-react";
 
 const TODAY_SCHEDULE = [
   {
-    time: "8:00",
-    title: "Zbiórka i wyjazd",
-    icon: Navigation,
-    color: "text-blue-400",
-    bg: "bg-blue-400/10",
+    time: "12:00",
+    title: "Wyjazd na Basen",
+    icon: Waves,
+    color: "text-sky-500",
+    bg: "bg-sky-500/10",
   },
   {
-    time: "12:30",
-    title: "Zakwaterowanie",
-    icon: Home,
-    color: "text-emerald-400",
-    bg: "bg-emerald-400/10",
-  },
-  {
-    time: "14:00",
-    title: "Zakupy",
-    icon: ShoppingBasket,
-    color: "text-cyan-500",
-    bg: "bg-cyan-500/10",
-  },
-  {
-    time: "16:00",
-    title: "Obiad",
-    icon: ForkKnife,
+    time: "14:30",
+    title: "Pizza na mieście",
+    icon: Pizza,
     color: "text-amber-500",
     bg: "bg-amber-500/10",
   },
   {
     time: "17:00",
+    title: "Wyjazd na MiniGolf",
+    icon: Volleyball,
+    color: "text-yellow-500",
+    bg: "bg-yellow-500/10",
+  },
+  {
+    time: "19:00",
     title: "Zabawa",
     icon: Flame,
     color: "text-orange-500",
@@ -46,7 +39,7 @@ export function TodayScheduleWidget() {
       <div className="mb-2 flex items-center justify-between">
         <h2 className="font-body text-theme-text text-lg font-semibold">Plan na dziś</h2>
         <span className="text-theme-primary bg-theme-primary/10 rounded-full px-2 py-0.5 font-mono text-xs font-bold tracking-wider uppercase">
-          Wtorek, 7 lipca
+          Czwartek, 9 lipca
         </span>
       </div>
 
