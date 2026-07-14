@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Coffee, Camera, GlassWater, CheckCircle2, Lock, UserPlus } from "lucide-react";
 import { Link } from "~/components/ui/link";
+import { getAppStorageItem, setAppStorageItem } from "~/lib/storage";
 
 const QUESTS = [
   {
@@ -45,12 +46,12 @@ export default function QuestsPage() {
   const [questStates, setQuestStates] = useState<Record<string, QuestState>>({});
 
   useEffect(() => {
-    const storedUserName = localStorage.getItem("tripkit_user_name");
+    const storedUserName = getAppStorageItem("user_name");
     if (storedUserName) {
       setActiveUserName(storedUserName);
     }
 
-    const savedStates = localStorage.getItem("tripkit_quests");
+    const savedStates = getAppStorageItem("quests");
     if (savedStates) {
       try {
         setQuestStates(JSON.parse(savedStates) as Record<string, QuestState>);
@@ -63,7 +64,7 @@ export default function QuestsPage() {
 
   const saveState = (newState: Record<string, QuestState>) => {
     setQuestStates(newState);
-    localStorage.setItem("tripkit_quests", JSON.stringify(newState));
+    setAppStorageItem("quests", JSON.stringify(newState));
   };
 
   const handleClaim = (questId: string) => {

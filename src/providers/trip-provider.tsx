@@ -3,6 +3,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { supabase } from "~/lib/supabase";
+import { getAppStorageItem, setAppStorageItem } from "~/lib/storage";
 
 export type TripSession = {
   tripId: string;
@@ -22,7 +23,7 @@ type TripContextType = {
 
 const TripContext = createContext<TripContextType | null>(null);
 
-const STORAGE_KEY = "tripkit_sessions";
+const STORAGE_KEY = "sessions";
 
 export function TripProvider({ children }: { children: React.ReactNode }) {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -33,7 +34,7 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
   // Pobieranie danych z LocalStorage przy uruchomieniu aplikacji
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = getAppStorageItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as {
           activeTripId: string | null;
@@ -51,7 +52,7 @@ export function TripProvider({ children }: { children: React.ReactNode }) {
   // Zapisywanie do LocalStorage przy każdej zmianie
   useEffect(() => {
     if (!isLoaded) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ activeTripId, sessions }));
+    setAppStorageItem(STORAGE_KEY, JSON.stringify({ activeTripId, sessions }));
   }, [activeTripId, sessions, isLoaded]);
 
   // Weryfikacja uprawnień bezpośrednio z bazy danych

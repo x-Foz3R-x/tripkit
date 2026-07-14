@@ -5,6 +5,7 @@ import { ArrowDownLeft, ArrowUpRight, Check, HelpCircle, X } from "lucide-react"
 import { supabase } from "~/lib/supabase";
 import { env } from "~/env";
 import type { Database } from "~/types/database";
+import { getAppStorageItem, setAppStorageItem } from "~/lib/storage";
 import {
   getSettlementRecipientId,
   getSettlementStatus,
@@ -29,7 +30,7 @@ interface ReceiptPaymentSectionProps {
 }
 
 const INITIAL_VISIBLE_SETTLEMENTS = 3;
-const HELP_DISMISSED_KEY = "tripkit_settlement_help_dismissed";
+const HELP_DISMISSED_KEY = "settlement_help_dismissed";
 
 export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
   settlements,
@@ -47,13 +48,13 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
   const [isHelpVisible, setIsHelpVisible] = useState(true);
 
   useEffect(() => {
-    if (localStorage.getItem(HELP_DISMISSED_KEY) === "true") {
+    if (getAppStorageItem(HELP_DISMISSED_KEY) === "true") {
       setIsHelpVisible(false);
     }
   }, []);
 
   const dismissHelp = () => {
-    localStorage.setItem(HELP_DISMISSED_KEY, "true");
+    setAppStorageItem(HELP_DISMISSED_KEY, "true");
     setIsHelpVisible(false);
   };
 

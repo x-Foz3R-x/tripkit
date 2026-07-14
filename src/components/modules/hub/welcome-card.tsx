@@ -8,6 +8,7 @@ import { env } from "~/env";
 import { Skeleton } from "~/components/ui/skeleton";
 import type { Database } from "~/types/database";
 import { Avatar } from "~/components/ui/avatar";
+import { getAppStorageItem, removeAppStorageItem, setAppStorageItem } from "~/lib/storage";
 
 // Bierzemy DOKŁADNIE typy kolumn 'id' i 'name' z tabeli 'users' z naszej bazy
 type Participant = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
@@ -20,8 +21,8 @@ export function WelcomeCard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem("tripkit_user_id");
-    const storedUserName = localStorage.getItem("tripkit_user_name");
+    const storedUserId = getAppStorageItem("user_id");
+    const storedUserName = getAppStorageItem("user_name");
 
     if (storedUserId && storedUserName) {
       setActiveUser({ id: storedUserId, name: storedUserName });
@@ -49,14 +50,14 @@ export function WelcomeCard() {
   }, []);
 
   const handleSelectUser = (user: Participant) => {
-    localStorage.setItem("tripkit_user_id", user.id);
-    localStorage.setItem("tripkit_user_name", user.name);
+    setAppStorageItem("user_id", user.id);
+    setAppStorageItem("user_name", user.name);
     setActiveUser(user);
   };
 
   const handleResetUser = () => {
-    localStorage.removeItem("tripkit_user_id");
-    localStorage.removeItem("tripkit_user_name");
+    removeAppStorageItem("user_id");
+    removeAppStorageItem("user_name");
     setActiveUser(null);
   };
 

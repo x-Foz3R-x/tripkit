@@ -5,6 +5,7 @@ import { Backpack, ChevronRight } from "lucide-react";
 import { env } from "~/env";
 import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { Checkbox } from "~/components/ui/checkbox";
+import { getAppStorageItem, setAppStorageItem } from "~/lib/storage";
 
 const PACKING_LIST = [
   {
@@ -34,11 +35,11 @@ export function PackingWidget() {
   const [activeUserId, setActiveUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem("tripkit_user_id");
+    const storedUserId = getAppStorageItem("user_id");
     if (storedUserId) {
       setActiveUserId(storedUserId);
-      const storageKey = `tripkit_packing_${env.NEXT_PUBLIC_TRIP_ID}_${storedUserId}`;
-      const savedData = localStorage.getItem(storageKey);
+      const storageKey = `packing_${env.NEXT_PUBLIC_TRIP_ID}_${storedUserId}`;
+      const savedData = getAppStorageItem(storageKey);
       if (savedData) {
         try {
           setCheckedItems(JSON.parse(savedData) as Record<string, boolean>);
@@ -54,8 +55,8 @@ export function PackingWidget() {
     if (!activeUserId) return;
     const newCheckedItems = { ...checkedItems, [item]: isChecked };
     setCheckedItems(newCheckedItems);
-    const storageKey = `tripkit_packing_${env.NEXT_PUBLIC_TRIP_ID}_${activeUserId}`;
-    localStorage.setItem(storageKey, JSON.stringify(newCheckedItems));
+    const storageKey = `packing_${env.NEXT_PUBLIC_TRIP_ID}_${activeUserId}`;
+    setAppStorageItem(storageKey, JSON.stringify(newCheckedItems));
   };
 
   if (!mounted) return null;

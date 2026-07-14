@@ -11,6 +11,7 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { Link } from "~/components/ui/link";
 import { ExpenseReceipt } from "~/components/modules/finances/receipt";
 import type { Database } from "~/types/database";
+import { getAppStorageItem } from "~/lib/storage";
 
 // DODAŁEM: & { phone?: string | null }
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name"> & {
@@ -66,7 +67,7 @@ export default function FinancesPage() {
   }, []);
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem("tripkit_user_id");
+    const storedUserId = getAppStorageItem("user_id");
     setMounted(true);
 
     if (!storedUserId) {

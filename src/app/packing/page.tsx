@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Backpack, Trash2 } from "lucide-react";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Button } from "~/components/ui/button";
+import { getAppStorageItem, removeAppStorageItem, setAppStorageItem } from "~/lib/storage";
 
 const PACKING_LIST = [
   {
@@ -31,7 +32,7 @@ export default function PackingPage() {
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    const savedData = localStorage.getItem("tripkit_packing-list");
+    const savedData = getAppStorageItem("packing-list");
     if (savedData) {
       try {
         setCheckedItems(JSON.parse(savedData) as Record<string, boolean>);
@@ -45,13 +46,13 @@ export default function PackingPage() {
   const handleToggle = (item: string, isChecked: boolean) => {
     const newCheckedItems = { ...checkedItems, [item]: isChecked };
     setCheckedItems(newCheckedItems);
-    localStorage.setItem("tripkit_packing-list", JSON.stringify(newCheckedItems));
+    setAppStorageItem("packing-list", JSON.stringify(newCheckedItems));
   };
 
   const handleClear = () => {
     if (confirm("Na pewno chcesz zresetować swoją listę do spakowania?")) {
       setCheckedItems({});
-      localStorage.removeItem("tripkit_packing-list");
+      removeAppStorageItem("packing-list");
     }
   };
 

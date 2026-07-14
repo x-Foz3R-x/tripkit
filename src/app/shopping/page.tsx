@@ -10,6 +10,7 @@ import { Link } from "~/components/ui/link";
 import { ShoppingForm } from "~/components/modules/shopping/shopping-form";
 import { ShoppingList } from "~/components/modules/shopping/shopping-list";
 import type { Database } from "~/types/database";
+import { getAppStorageItem } from "~/lib/storage";
 
 type ShoppingItem = Database["public"]["Tables"]["shopping_list"]["Row"];
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
@@ -51,7 +52,7 @@ export default function ShoppingPage() {
   }, []);
 
   useEffect(() => {
-    const storedUserId = localStorage.getItem("tripkit_user_id");
+    const storedUserId = getAppStorageItem("user_id");
     setMounted(true);
 
     if (!storedUserId) {
