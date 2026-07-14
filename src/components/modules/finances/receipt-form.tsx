@@ -73,16 +73,16 @@ export const ExpenseForm = memo(function ExpenseForm({
 
   return (
     <div className="pb-safe font-mono">
-      <div className="mb-3 flex items-center justify-between border-b border-dashed border-white/15 pb-3">
+      <div className="border-theme-border mb-3 flex items-center justify-between border-b border-dashed pb-3">
         <div className="flex items-center gap-2">
           <ReceiptText size={17} className="text-theme-primary" />
 
-          <span className="text-[12px] font-bold tracking-[0.13em] text-white uppercase">
+          <span className="text-theme-text text-[12px] font-bold tracking-[0.13em] uppercase">
             Dopisz pozycję
           </span>
         </div>
 
-        <span className="text-theme-muted rounded-md border border-white/10 px-2 py-1 text-[9px] tracking-wider uppercase">
+        <span className="text-theme-muted border-theme-border rounded-md border px-2 py-1 text-[9px] tracking-wider uppercase">
           PLN
         </span>
       </div>
@@ -102,7 +102,7 @@ export const ExpenseForm = memo(function ExpenseForm({
               id="expense-payer"
               value={payerId}
               onChange={(event) => setPayerId(event.target.value)}
-              className="bg-theme-bg text-theme-text focus:border-theme-primary h-11 w-full appearance-none rounded-xl border border-white/10 px-4 pr-11 text-sm transition-colors outline-none"
+              className="bg-theme-bg text-theme-text focus:border-theme-primary border-theme-border h-11 w-full appearance-none rounded-xl border px-4 pr-11 text-sm transition-colors outline-none"
             >
               {users.map((user) => (
                 <option key={user.id} value={user.id}>
@@ -119,7 +119,7 @@ export const ExpenseForm = memo(function ExpenseForm({
           </div>
         </div>
 
-        <div className="border-t border-dashed border-white/10 pt-3">
+        <div className="border-theme-border border-t border-dashed pt-3">
           <Input
             id="expense-description"
             label="Nazwa pozycji"
@@ -128,7 +128,7 @@ export const ExpenseForm = memo(function ExpenseForm({
             onChange={(event) => setDescription(event.target.value)}
             className={{
               input:
-                "bg-theme-bg text-theme-text placeholder:text-theme-muted/45 focus:border-theme-primary border-white/10 font-mono",
+                "bg-theme-bg text-theme-text placeholder:text-theme-muted/45 focus:border-theme-primary border-theme-border font-mono",
               label: "font-mono",
             }}
           />
@@ -149,7 +149,7 @@ export const ExpenseForm = memo(function ExpenseForm({
             }
             className={{
               input:
-                "bg-theme-bg text-theme-text placeholder:text-theme-muted/45 focus:border-theme-primary border-white/10 pr-16 font-mono font-bold",
+                "bg-theme-bg text-theme-text placeholder:text-theme-muted/45 focus:border-theme-primary border-theme-border pr-16 font-mono font-bold",
               label: "font-mono",
             }}
           />
@@ -159,7 +159,7 @@ export const ExpenseForm = memo(function ExpenseForm({
           </span>
         </div>
 
-        <div className="border-t border-dashed border-white/10 pt-3">
+        <div className="border-theme-border border-t border-dashed pt-3">
           <div className="flex items-center gap-2">
             <UsersRound size={15} className="text-theme-primary" />
 
@@ -195,7 +195,7 @@ export const ExpenseForm = memo(function ExpenseForm({
                   className={`focus-visible:ring-theme-primary focus-visible:ring-offset-theme-bg flex items-center gap-1 rounded-full border px-3 py-2 text-[11px] font-bold transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:scale-95 ${
                     isSelected
                       ? "border-theme-primary bg-theme-primary/10 text-theme-primary"
-                      : "bg-theme-bg text-theme-muted hover:text-theme-text border-white/10 hover:border-white/30"
+                      : "bg-theme-bg text-theme-muted hover:text-theme-text border-theme-border hover:border-theme-border"
                   }`}
                 >
                   {isSelected && <Check size={11} />}
@@ -206,7 +206,7 @@ export const ExpenseForm = memo(function ExpenseForm({
           </div>
         </div>
 
-        <div className="border-t border-dashed border-white/15 pt-3">
+        <div className="border-theme-border border-t border-dashed pt-3">
           <Button
             type="button"
             variant={isFormValid ? "default" : "outline"}

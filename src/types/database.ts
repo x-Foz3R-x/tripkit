@@ -183,25 +183,34 @@ export type Database = {
       trips: {
         Row: {
           created_at: string | null
+          end_date: string | null
           id: string
+          join_pin: string | null
           modules: Json | null
           name: string
+          start_date: string | null
           theme: string | null
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          end_date?: string | null
           id?: string
+          join_pin?: string | null
           modules?: Json | null
           name: string
+          start_date?: string | null
           theme?: string | null
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          end_date?: string | null
           id?: string
+          join_pin?: string | null
           modules?: Json | null
           name?: string
+          start_date?: string | null
           theme?: string | null
           updated_at?: string | null
         }
@@ -212,31 +221,37 @@ export type Database = {
           avatar_url: string | null
           created_at: string | null
           id: string
+          is_admin: boolean
           name: string
           phone: string | null
           team_id: string | null
           trip_id: string
           updated_at: string | null
+          user_pin: string | null
         }
         Insert: {
           avatar_url?: string | null
           created_at?: string | null
           id?: string
+          is_admin?: boolean
           name: string
           phone?: string | null
           team_id?: string | null
           trip_id: string
           updated_at?: string | null
+          user_pin?: string | null
         }
         Update: {
           avatar_url?: string | null
           created_at?: string | null
           id?: string
+          is_admin?: boolean
           name?: string
           phone?: string | null
           team_id?: string | null
           trip_id?: string
           updated_at?: string | null
+          user_pin?: string | null
         }
         Relationships: [
           {

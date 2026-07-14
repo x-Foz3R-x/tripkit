@@ -87,7 +87,7 @@ export default function QuestsPage() {
   if (!activeUserName) {
     return (
       <div className="animate-fade-in flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <div className="bg-theme-card text-theme-muted flex h-16 w-16 items-center justify-center rounded-full border border-white/5 shadow-sm">
+        <div className="bg-theme-card text-theme-muted border-theme-border flex h-16 w-16 items-center justify-center rounded-full border shadow-sm">
           <Lock size={28} />
         </div>
         <div>
@@ -109,9 +109,7 @@ export default function QuestsPage() {
     <div className="animate-fade-in pb-safe flex flex-col gap-6">
       <header className="flex items-center justify-between pt-4 pb-2">
         <div className="flex flex-col gap-1">
-          <h1 className="font-heading text-theme-text text-5xl font-semibold tracking-wide drop-shadow-sm">
-            Zlecenia
-          </h1>
+          <h1 className="font-heading text-theme-text text-5xl font-semibold">Zlecenia</h1>
           <p className="font-body text-theme-muted text-sm">Przyjmuj misje i zgarniaj punkty.</p>
         </div>
       </header>
@@ -129,15 +127,15 @@ export default function QuestsPage() {
               key={quest.id}
               className={`flex flex-col gap-3 rounded-2xl border p-4 transition-all duration-300 ${
                 isDone
-                  ? "border-emerald-500/20 bg-emerald-500/5 opacity-60 grayscale-30"
-                  : "bg-theme-card border-white/5 shadow-sm"
+                  ? "border-theme-success/25 bg-theme-success/5 opacity-60 grayscale-30"
+                  : "bg-theme-card border-theme-border shadow-sm"
               }`}
             >
               {/* Nagłówek Zlecenia */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDone ? "bg-emerald-500/20 text-emerald-500" : `${quest.bg} ${quest.color}`}`}
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isDone ? "bg-theme-success/20 text-theme-success" : `${quest.bg} ${quest.color}`}`}
                   >
                     <Icon size={20} />
                   </div>
@@ -154,7 +152,7 @@ export default function QuestsPage() {
               <p className="font-body text-theme-muted/90 text-sm">{quest.description}</p>
 
               {/* Akcje / Status */}
-              <div className="mt-1 flex items-center justify-between border-t border-white/5 pt-3">
+              <div className="border-theme-border mt-1 flex items-center justify-between border-t pt-3">
                 {/* Informacja o statusie */}
                 <div className="flex items-center gap-2">
                   {state.status === "open" && (
@@ -168,7 +166,7 @@ export default function QuestsPage() {
                     </span>
                   )}
                   {isDone && (
-                    <span className="font-body flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                    <span className="font-body text-theme-success flex items-center gap-1.5 text-xs font-bold">
                       <CheckCircle2 size={14} /> Wykonane przez: {state.userName}
                     </span>
                   )}
@@ -178,7 +176,7 @@ export default function QuestsPage() {
                 {state.status === "open" && (
                   <button
                     onClick={() => handleClaim(quest.id)}
-                    className="font-body hover:bg-theme-primary rounded-lg bg-white/10 px-4 py-1.5 text-xs font-bold text-white transition-colors hover:text-white active:scale-95"
+                    className="font-body bg-theme-text/10 text-theme-text hover:bg-theme-primary hover:text-theme-primary-foreground rounded-lg px-4 py-1.5 text-xs font-bold transition-colors active:scale-95"
                   >
                     Przyjmuję
                   </button>
@@ -187,7 +185,7 @@ export default function QuestsPage() {
                 {isClaimedByMe && (
                   <button
                     onClick={() => handleComplete(quest.id)}
-                    className="font-body flex items-center gap-1.5 rounded-lg bg-emerald-500/20 px-4 py-1.5 text-xs font-bold text-emerald-400 transition-colors hover:bg-emerald-500 hover:text-white active:scale-95"
+                    className="font-body bg-theme-success/20 text-theme-success hover:bg-theme-success hover:text-theme-bg flex items-center gap-1.5 rounded-lg px-4 py-1.5 text-xs font-bold transition-colors active:scale-95"
                   >
                     <CheckCircle2 size={14} /> Zrobione!
                   </button>

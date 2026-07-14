@@ -30,14 +30,14 @@ export function Checkbox({ id, checked, onChange, label }: CheckboxProps) {
             "flex h-5 w-5 items-center justify-center rounded-md border transition-all duration-200 ease-in-out",
             checked
               ? "border-theme-primary bg-theme-primary"
-              : "bg-theme-bg group-hover:border-theme-primary/50 border-white/20",
+              : "bg-theme-bg group-hover:border-theme-primary/50 border-theme-border",
           )}
         >
           <Check
             size={14}
             strokeWidth={3}
             className={cn(
-              "text-white transition-transform duration-200",
+              "text-theme-primary-foreground transition-transform duration-200",
               checked ? "scale-100 opacity-100" : "scale-50 opacity-0",
             )}
           />

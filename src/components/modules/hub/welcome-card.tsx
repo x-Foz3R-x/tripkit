@@ -64,7 +64,7 @@ export function WelcomeCard() {
 
   if (activeUser) {
     return (
-      <div className="bg-theme-card flex items-center justify-between rounded-2xl border border-white/5 p-5 shadow-sm">
+      <div className="bg-theme-card border-theme-border flex items-center justify-between rounded-2xl border p-5 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="text-theme-primary flex h-12 w-12 items-center justify-center rounded-full">
             <Avatar user={activeUser} />
@@ -78,7 +78,7 @@ export function WelcomeCard() {
         </div>
         <button
           onClick={handleResetUser}
-          className="font-body text-theme-muted flex flex-col items-center gap-1 text-xs transition-colors hover:text-white"
+          className="font-body text-theme-muted hover:text-theme-text flex flex-col items-center gap-1 text-xs transition-colors"
         >
           <LogOut size={16} />
           <span>Zmień</span>
@@ -88,7 +88,7 @@ export function WelcomeCard() {
   }
 
   return (
-    <div className="bg-theme-card flex flex-col gap-5 rounded-2xl border border-white/5 p-6 shadow-sm">
+    <div className="bg-theme-card border-theme-border flex flex-col gap-5 rounded-2xl border p-6 shadow-sm">
       <div>
         <h2 className="font-body text-theme-text text-lg font-semibold">Kim jesteś?</h2>
         <p className="font-body text-theme-muted text-sm">
@@ -109,7 +109,7 @@ export function WelcomeCard() {
                 <button
                   key={user.id}
                   onClick={() => handleSelectUser(user)}
-                  className="group bg-theme-bg/50 hover:border-theme-primary/50 focus:ring-theme-primary/50 relative flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border border-white/5 p-2 transition-all hover:bg-white/5 focus:ring-2 focus:outline-none active:scale-95"
+                  className="group bg-theme-bg/50 hover:border-theme-primary/50 focus:ring-theme-primary/50 border-theme-border hover:bg-theme-text/5 relative flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border p-2 transition-all focus:ring-2 focus:outline-none active:scale-95"
                 >
                   <Avatar user={user} />
                   <span className="font-body text-theme-text text-xs font-medium">{user.name}</span>

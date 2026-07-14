@@ -123,7 +123,7 @@ export default function FinancesPage() {
     <div className="animate-fade-in pb-safe pt-4">
       {!isFinanceEnabled || !activeUserId ? (
         <div className="animate-fade-in flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-          <div className="bg-theme-card text-theme-muted flex h-16 w-16 items-center justify-center rounded-full border border-white/5 shadow-sm">
+          <div className="bg-theme-card text-theme-muted border-theme-border flex h-16 w-16 items-center justify-center rounded-full border shadow-sm">
             <Lock size={28} />
           </div>
           <div>
@@ -150,7 +150,7 @@ export default function FinancesPage() {
           <button
             type="button"
             onClick={() => void loadData(true)}
-            className="bg-theme-primary/20 text-theme-primary font-body hover:bg-theme-primary rounded-lg px-4 py-2 text-xs font-bold transition-colors hover:text-white"
+            className="bg-theme-primary/20 text-theme-primary font-body hover:bg-theme-primary hover:text-theme-primary-foreground rounded-lg px-4 py-2 text-xs font-bold transition-colors"
           >
             Spróbuj ponownie
           </button>

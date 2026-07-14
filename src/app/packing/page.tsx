@@ -66,9 +66,7 @@ export default function PackingPage() {
       <header className="flex flex-col gap-3 pt-4 pb-2">
         <div className="flex items-center justify-between pb-2">
           <div className="flex flex-col gap-1">
-            <h1 className="font-heading text-theme-text text-5xl font-semibold tracking-wide drop-shadow-sm">
-              Pakowanie
-            </h1>
+            <h1 className="font-heading text-theme-text text-5xl font-semibold">Pakowanie</h1>
           </div>
 
           <Button
@@ -115,7 +113,7 @@ export default function PackingPage() {
             <div
               key={category.category}
               className={`bg-theme-card flex flex-col gap-2 rounded-2xl border p-5 transition-all duration-300 ${
-                isCatDone ? "border-emerald-500/20 opacity-60" : "border-white/5 shadow-sm"
+                isCatDone ? "border-theme-success/25 opacity-60" : "border-theme-border shadow-sm"
               }`}
             >
               <h2 className="font-body text-theme-text mb-1 text-lg font-bold">

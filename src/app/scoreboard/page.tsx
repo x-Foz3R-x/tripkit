@@ -64,9 +64,7 @@ export default function ScoreboardPage() {
     <div className="animate-fade-in pb-safe flex flex-col gap-6">
       <header className="flex items-center justify-between pt-4 pb-2">
         <div className="flex flex-col gap-1">
-          <h1 className="font-heading text-theme-text text-5xl font-semibold tracking-wide drop-shadow-sm">
-            Scoreboard
-          </h1>
+          <h1 className="font-heading text-theme-text text-5xl font-semibold">Scoreboard</h1>
         </div>
       </header>
 
@@ -80,7 +78,7 @@ export default function ScoreboardPage() {
         {isLoading ? (
           <Skeleton className="h-71 w-full rounded-2xl" />
         ) : teams.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-white/10 py-12 text-center">
+          <div className="border-theme-border flex flex-col items-center gap-2 rounded-2xl border border-dashed py-12 text-center">
             <span className="font-body text-theme-muted text-sm">Brak drużyn w bazie.</span>
           </div>
         ) : (
@@ -114,7 +112,7 @@ export default function ScoreboardPage() {
               return (
                 <div
                   key={team.id}
-                  className="flex flex-col gap-1 border-b border-dashed border-white/10 py-3 first:pt-0 last:border-0 last:pb-0"
+                  className="border-theme-border flex flex-col gap-1 border-b border-dashed py-3 first:pt-0 last:border-0 last:pb-0"
                 >
                   <div className="flex items-center gap-2">
                     {team.color_hex && (
@@ -123,10 +121,12 @@ export default function ScoreboardPage() {
                         style={{ backgroundColor: team.color_hex }}
                       />
                     )}
-                    <h3 className="font-heading text-lg tracking-wide text-white">{team.name}</h3>
+                    <h3 className="font-heading text-theme-text text-lg font-semibold">
+                      {team.name}
+                    </h3>
                   </div>
 
-                  <p className="font-body text-sm text-white/70">
+                  <p className="font-body text-theme-text/70 text-sm">
                     {teamMembers.length > 0
                       ? teamMembers.map((m) => m.name).join(", ")
                       : "Brak zawodników"}

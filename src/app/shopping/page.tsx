@@ -68,7 +68,7 @@ export default function ShoppingPage() {
   if (!isFinanceEnabled || !activeUserId) {
     return (
       <div className="animate-fade-in flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <div className="bg-theme-card text-theme-muted flex h-16 w-16 items-center justify-center rounded-full border border-white/5 shadow-sm">
+        <div className="bg-theme-card text-theme-muted border-theme-border flex h-16 w-16 items-center justify-center rounded-full border shadow-sm">
           <Lock size={28} />
         </div>
         <div>
@@ -92,9 +92,7 @@ export default function ShoppingPage() {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <ShoppingBasket className="text-theme-primary" size={24} />
-            <h1 className="font-heading text-theme-text text-4xl font-semibold tracking-wide">
-              Zakupy
-            </h1>
+            <h1 className="font-heading text-theme-text text-4xl font-semibold">Zakupy</h1>
           </div>
           <p className="text-theme-muted text-sm">Wspólna check-lista wyjazdowa.</p>
         </div>
@@ -103,7 +101,7 @@ export default function ShoppingPage() {
       <button
         type="button"
         onClick={() => setIsModalOpen(true)}
-        className="bg-theme-primary text-theme-bg shadow-theme-primary/20 flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold tracking-wider uppercase shadow-lg transition active:scale-[0.98]"
+        className="bg-theme-primary text-theme-primary-foreground shadow-theme-primary/20 hover:bg-theme-primary-hover active:bg-theme-primary-active flex items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-bold tracking-wider uppercase shadow-lg transition active:scale-[0.98]"
       >
         <Plus size={18} strokeWidth={2.5} />
         Dodaj produkt

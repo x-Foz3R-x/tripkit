@@ -38,7 +38,7 @@ export function ResponsiveDialog({
   if (isDesktop) {
     return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="bg-theme-bg text-theme-text border-white/10 p-5 outline-none sm:max-w-lg">
+        <DialogContent className="bg-theme-bg text-theme-text border-theme-border p-5 outline-none sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{title}</DialogTitle>
             {description && <DialogDescription>{description}</DialogDescription>}
@@ -57,7 +57,7 @@ export function ResponsiveDialog({
       repositionInputs={false}
       direction="bottom"
     >
-      <DrawerContent className="bg-theme-bg pb-safe border-t border-white/10 text-white outline-none">
+      <DrawerContent className="bg-theme-bg pb-safe border-theme-border text-theme-text border-t outline-none">
         <div className="" />
 
         {(title ?? description) && (

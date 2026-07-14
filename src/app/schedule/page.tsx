@@ -77,9 +77,7 @@ export default function SchedulePage() {
     <div className="animate-fade-in pb-safe flex flex-col gap-6">
       <header className="flex items-center justify-between pt-4 pb-2">
         <div className="flex flex-col gap-1">
-          <h1 className="font-heading text-theme-text text-5xl font-semibold tracking-wide drop-shadow-sm">
-            Plan Wyjazdu
-          </h1>
+          <h1 className="font-heading text-theme-text text-5xl font-semibold">Plan Wyjazdu</h1>
         </div>
       </header>
 
@@ -88,11 +86,11 @@ export default function SchedulePage() {
           <div key={dayIndex} className="flex flex-col">
             {/* Nagłówek Dnia */}
             <div className="sticky top-0 z-10 mb-4 flex items-center gap-3 py-2 backdrop-blur-md">
-              <div className="h-px flex-1 bg-white/10" />
+              <div className="bg-theme-text/10 h-px flex-1" />
               <h2 className="font-body text-theme-muted text-sm font-bold tracking-widest uppercase">
                 {day.date}
               </h2>
-              <div className="h-px flex-1 bg-white/10" />
+              <div className="bg-theme-text/10 h-px flex-1" />
             </div>
 
             {/* Oś czasu dla konkretnego dnia */}
@@ -106,17 +104,19 @@ export default function SchedulePage() {
                     {/* Lewa kolumna: Czas i Oś */}
                     <div className="flex flex-col items-center">
                       {/* Pasek łączący w górę (ukryty dla pierwszego elementu dnia, by ładniej wyglądało, albo widoczny zależnie od preferencji) */}
-                      <div className={`w-px bg-white/10 ${i === 0 ? "h-2" : "h-full"}`} />
+                      <div className={`bg-theme-text/10 w-px ${i === 0 ? "h-2" : "h-full"}`} />
 
                       {/* Kółko z ikoną */}
                       <div
-                        className={`relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/5 shadow-sm transition-transform duration-300 group-hover:scale-110 ${ev.bg} ${ev.color}`}
+                        className={`border-theme-border relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border shadow-sm transition-transform duration-300 group-hover:scale-110 ${ev.bg} ${ev.color}`}
                       >
                         <Icon size={18} />
                       </div>
 
                       {/* Pasek łączący w dół */}
-                      <div className={`w-px bg-white/10 ${isLast ? "h-2" : "h-full min-h-10"}`} />
+                      <div
+                        className={`bg-theme-text/10 w-px ${isLast ? "h-2" : "h-full min-h-10"}`}
+                      />
                     </div>
 
                     {/* Prawa kolumna: Treść */}
@@ -124,7 +124,7 @@ export default function SchedulePage() {
                       <span className="text-theme-text/80 mb-0.5 font-mono text-sm font-bold">
                         {ev.time}
                       </span>
-                      <div className="bg-theme-card flex flex-col rounded-2xl border border-white/5 p-4 shadow-sm transition-all hover:bg-white/5">
+                      <div className="bg-theme-card border-theme-border hover:bg-theme-text/5 flex flex-col rounded-2xl border p-4 shadow-sm transition-all">
                         <h3 className="font-body text-theme-text text-lg font-bold">{ev.title}</h3>
                         <p className="font-body text-theme-muted mt-1 text-sm">{ev.description}</p>
                       </div>

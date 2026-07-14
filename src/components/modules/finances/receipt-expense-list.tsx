@@ -68,26 +68,26 @@ export const ReceiptExpenseList = memo(function ReceiptExpenseList({
         return (
           <div
             key={expense.id}
-            className="flex flex-col border-b border-dashed border-white/10 pb-4 last:border-0 last:pb-0"
+            className="border-theme-border flex flex-col border-b border-dashed pb-4 last:border-0 last:pb-0"
           >
             <div className="flex items-start justify-between gap-3">
-              <span className="text-[13px] leading-snug font-bold text-white uppercase">
+              <span className="text-theme-text text-[13px] leading-snug font-bold uppercase">
                 {expense.description}
               </span>
 
               <div className="flex shrink-0 items-baseline gap-1.5">
-                <span className="text-[14px] font-bold text-white">
+                <span className="text-theme-text text-[14px] font-bold">
                   {Number(expense.amount).toFixed(2)}
                 </span>
               </div>
             </div>
 
             <span className="text-theme-muted text-[11px] uppercase">
-              PŁATNIK: <span className="text-white/80">{payer}</span>
+              PŁATNIK: <span className="text-theme-text/80">{payer}</span>
             </span>
 
             <span className="text-theme-muted/80 mt-1 block text-[9px] leading-snug uppercase">
-              PODZIAŁ: <span className="text-white/70">{splitNames}</span>
+              PODZIAŁ: <span className="text-theme-text/70">{splitNames}</span>
             </span>
 
             <span className="text-theme-muted/40 mt-2 text-[9px] tracking-tighter uppercase">

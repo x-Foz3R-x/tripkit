@@ -35,7 +35,7 @@ const PLAYLISTS = [
 
 export function PlaylistWidget() {
   return (
-    <div className="bg-theme-card flex flex-col gap-4 rounded-2xl border border-white/5 p-6 shadow-sm">
+    <div className="bg-theme-card border-theme-border flex flex-col gap-4 rounded-2xl border p-6 shadow-sm">
       <div className="flex items-center justify-between">
         <h2 className="font-body text-theme-text text-lg font-semibold">Stacja DJ-a</h2>
         <span className="bg-theme-primary/10 text-theme-primary rounded-full px-2 py-0.5 font-mono text-xs font-bold tracking-wider uppercase">
@@ -52,7 +52,7 @@ export function PlaylistWidget() {
               href={pl.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-theme-bg/50 flex w-full items-start justify-start gap-3 rounded-xl border border-white/5 px-3 py-2 hover:border-white/10 hover:bg-white/5"
+              className="bg-theme-bg/50 border-theme-border hover:border-theme-border hover:bg-theme-text/5 flex w-full items-start justify-start gap-3 rounded-xl border px-3 py-2"
             >
               <div
                 className={`flex h-10 w-10 items-center justify-center rounded-lg ${pl.bg} ${pl.color}`}

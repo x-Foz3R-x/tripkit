@@ -18,13 +18,13 @@ export const ReceiptHeader = memo(function ReceiptHeader({
 }: ReceiptHeaderProps) {
   return (
     <div className="flex flex-col items-center pb-4 text-center">
-      <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-white/20 px-3 py-2 text-white/80">
+      <div className="border-theme-border text-theme-text/80 mb-2 inline-flex items-center gap-2 rounded-full border px-3 py-2">
         <Landmark size={17} strokeWidth={2} />
 
         <span className="text-[11px] font-bold tracking-[0.16em] uppercase">Skarbiec Wyjazdu</span>
       </div>
 
-      <p className="text-[10px] font-bold tracking-tight text-white/80 uppercase">
+      <p className="text-theme-text/80 text-[10px] font-bold tracking-tight uppercase">
         Codziennie równe rachunki
       </p>
 
@@ -38,7 +38,7 @@ export const ReceiptHeader = memo(function ReceiptHeader({
         <span className="text-[10px]">STAN. 01</span>
       </div>
 
-      <p className="mt-4 text-[15px] font-bold tracking-widest text-white uppercase">
+      <p className="text-theme-text mt-4 text-[15px] font-bold tracking-widest uppercase">
         Paragon Wyjazdowy
       </p>
 

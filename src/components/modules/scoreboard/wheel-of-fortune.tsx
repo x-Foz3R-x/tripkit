@@ -116,10 +116,10 @@ export const WheelOfFortune = memo(function WheelOfFortune({ users }: WheelOfFor
   if (users.length === 0) return null;
 
   return (
-    <div className="bg-theme-card flex flex-col items-center gap-6 rounded-2xl border border-white/5 p-6 shadow-sm">
-      <div className="flex items-center gap-2 text-white">
+    <div className="bg-theme-card border-theme-border flex flex-col items-center gap-6 rounded-2xl border p-6 shadow-sm">
+      <div className="text-theme-text flex items-center gap-2">
         <Dices className="text-theme-accent" size={24} />
-        <h3 className="font-heading text-xl tracking-wide">Koło Fortuny</h3>
+        <h3 className="font-heading text-xl font-semibold">Koło Fortuny</h3>
       </div>
 
       <div className="relative mt-2 flex items-center justify-center">
@@ -130,7 +130,7 @@ export const WheelOfFortune = memo(function WheelOfFortune({ users }: WheelOfFor
 
         {/* Główne koło */}
         <div
-          className="relative h-64 w-64 overflow-hidden rounded-full border-4 border-white/10 shadow-xl transition-transform duration-4000 ease-[cubic-bezier(0.15,0.85,0.35,1)]"
+          className="border-theme-border relative h-64 w-64 overflow-hidden rounded-full border-4 shadow-xl transition-transform duration-4000 ease-[cubic-bezier(0.15,0.85,0.35,1)]"
           style={{
             transform: `rotate(${rotation}deg)`,
             background: wheelBackground,
@@ -146,7 +146,7 @@ export const WheelOfFortune = memo(function WheelOfFortune({ users }: WheelOfFor
                 className="absolute top-1/2 left-1/2 flex h-8 w-29 origin-left -translate-y-1/2 items-center justify-end pr-3"
                 style={{ transform: `rotate(${labelRotation - 90}deg)` }}
               >
-                <span className="truncate text-[11px] font-bold tracking-widest text-white uppercase drop-shadow-md">
+                <span className="text-theme-text truncate text-[11px] font-bold tracking-widest uppercase drop-shadow-md">
                   {user.name}
                 </span>
               </div>
@@ -189,7 +189,7 @@ export const WheelOfFortune = memo(function WheelOfFortune({ users }: WheelOfFor
       </Button>
 
       {/* --- PANEL STEROWANIA UCZESTNIKAMI --- */}
-      <div className="mt-2 flex w-full flex-col gap-3 border-t border-dashed border-white/10 pt-4">
+      <div className="border-theme-border mt-2 flex w-full flex-col gap-3 border-t border-dashed pt-4">
         <div className="flex items-center justify-between">
           <span className="text-theme-muted text-[10px] font-bold tracking-wider uppercase">
             Biorą udział ({numUsers})
@@ -198,7 +198,7 @@ export const WheelOfFortune = memo(function WheelOfFortune({ users }: WheelOfFor
             type="button"
             onClick={handleReset}
             disabled={isSpinning || excludedUserIds.length === 0}
-            className="text-theme-primary flex items-center gap-1.5 text-[10px] font-bold tracking-wider uppercase transition hover:text-white disabled:opacity-30"
+            className="text-theme-primary hover:text-theme-text flex items-center gap-1.5 text-[10px] font-bold tracking-wider uppercase transition disabled:opacity-30"
           >
             <RefreshCw size={12} />
             Resetuj
@@ -216,7 +216,7 @@ export const WheelOfFortune = memo(function WheelOfFortune({ users }: WheelOfFor
                 disabled={isSpinning}
                 className={`flex items-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-bold uppercase transition-all ${
                   isExcluded
-                    ? "bg-theme-bg text-theme-muted/40 border-white/5 line-through"
+                    ? "bg-theme-bg text-theme-muted/40 border-theme-border line-through"
                     : "border-theme-primary/30 bg-theme-primary/10 text-theme-primary"
                 }`}
               >

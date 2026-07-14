@@ -55,7 +55,7 @@ export const ShoppingList = memo(function ShoppingList({
   return (
     <div className="flex flex-col gap-4">
       {/* Zakładki */}
-      <div className="flex w-full rounded-xl bg-white/5 p-1">
+      <div className="bg-theme-text/5 flex w-full rounded-xl p-1">
         <button
           type="button"
           onClick={() => setActiveTab("active")}
@@ -81,7 +81,7 @@ export const ShoppingList = memo(function ShoppingList({
       {/* Lista Elementów */}
       <div className="flex flex-col gap-2">
         {displayedItems.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 py-10 text-center">
+          <div className="border-theme-border flex flex-col items-center justify-center rounded-2xl border border-dashed py-10 text-center">
             <span className="text-theme-muted text-sm">
               {activeTab === "active"
                 ? "Brak rzeczy do kupienia. Jesteście zaopatrzeni!"
@@ -99,7 +99,7 @@ export const ShoppingList = memo(function ShoppingList({
             return (
               <div
                 key={item.id}
-                className={`bg-theme-card flex items-center justify-between gap-3 rounded-2xl border border-white/5 p-4 transition-all ${
+                className={`bg-theme-card border-theme-border flex items-center justify-between gap-3 rounded-2xl border p-4 transition-all ${
                   item.is_completed ? "opacity-60" : ""
                 } ${isLoading ? "animate-pulse opacity-50" : ""}`}
               >
@@ -117,8 +117,8 @@ export const ShoppingList = memo(function ShoppingList({
 
                   <div className="flex flex-col gap-1">
                     <span
-                      className={`text-sm font-semibold text-white transition-all ${
-                        item.is_completed ? "text-white/60 line-through" : ""
+                      className={`text-theme-text text-sm font-semibold transition-all ${
+                        item.is_completed ? "text-theme-text/60 line-through" : ""
                       }`}
                     >
                       {item.item_name}
@@ -144,7 +144,7 @@ export const ShoppingList = memo(function ShoppingList({
                   <button
                     type="button"
                     onClick={() => void handleDelete(item.id)}
-                    className="text-theme-muted p-2 transition-colors hover:text-red-400"
+                    className="text-theme-muted hover:text-theme-danger p-2 transition-colors"
                     disabled={isLoading}
                   >
                     <Trash2 size={16} />

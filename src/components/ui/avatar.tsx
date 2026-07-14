@@ -2,7 +2,7 @@ import { cn } from "~/lib/utils";
 
 const AVATAR_COLORS = [
   "bg-blue-500/20 text-blue-500",
-  "bg-emerald-500/20 text-emerald-500",
+  "bg-theme-success/20 text-theme-success",
   "bg-rose-500/20 text-rose-500",
   "bg-amber-500/20 text-amber-500",
   "bg-green-500/20 text-green-500",

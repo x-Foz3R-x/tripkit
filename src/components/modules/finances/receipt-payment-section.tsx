@@ -162,7 +162,7 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
   };
 
   return (
-    <div className="mt-5 flex flex-col gap-3 border-t border-dashed border-white/20 pt-4">
+    <div className="border-theme-border mt-5 flex flex-col gap-3 border-t border-dashed pt-4">
       <div className="flex items-center justify-between">
         <span className="text-theme-muted/80 text-[12px] font-bold tracking-widest uppercase">
           Rozliczenie płatności
@@ -179,7 +179,7 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
       </div>
 
       {isHelpVisible && (
-        <div className="border-theme-muted/25 flex flex-col gap-1.5 rounded-lg border border-dashed bg-white/3 px-3 py-3 text-[11px] normal-case">
+        <div className="border-theme-muted/25 bg-theme-text/3 flex flex-col gap-1.5 rounded-lg border border-dashed px-3 py-3 text-[11px] normal-case">
           <div className="flex items-start justify-between gap-2">
             <span className="text-theme-muted/80 text-[10px] font-bold tracking-wider uppercase">
               Jak to działa
@@ -213,7 +213,7 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
       )}
 
       {settlements.length > 0 && (
-        <div className="flex flex-col gap-2 border-b border-dashed border-white/10 pb-3">
+        <div className="border-theme-border flex flex-col gap-2 border-b border-dashed pb-3">
           <span className="text-theme-muted/60 text-[10px] font-bold tracking-wider uppercase">
             Rejestr wpłat
           </span>
@@ -243,7 +243,7 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
                 key={settlement.id}
                 className="flex items-center justify-between gap-3 text-[11px] uppercase"
               >
-                <span className="text-white/70">
+                <span className="text-theme-text/70">
                   {debtor} → {recipient}
                 </span>
 
@@ -292,10 +292,10 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
                 return (
                   <div
                     key={settlement.id}
-                    className="flex flex-col gap-2 border-t border-dashed border-white/10 pt-2.5 first:border-0 first:pt-0"
+                    className="border-theme-border flex flex-col gap-2 border-t border-dashed pt-2.5 first:border-0 first:pt-0"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="flex items-center gap-1.5 text-white/90">
+                      <span className="text-theme-text/90 flex items-center gap-1.5">
                         <ArrowDownLeft size={14} className="text-theme-accent shrink-0" />
                         {debtor}
                       </span>
@@ -350,10 +350,10 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
                 return (
                   <div
                     key={debt.to}
-                    className="flex items-center justify-between gap-2 border-t border-dashed border-white/5 pt-2 first:border-0 first:pt-0"
+                    className="border-theme-border flex items-center justify-between gap-2 border-t border-dashed pt-2 first:border-0 first:pt-0"
                   >
                     <div className="flex flex-col gap-0.5">
-                      <span className="flex items-center gap-1.5 text-white/90">
+                      <span className="text-theme-text/90 flex items-center gap-1.5">
                         <ArrowUpRight size={14} className="text-theme-primary shrink-0" />
                         {creditor}
                       </span>
@@ -364,7 +364,7 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
                           BLIK:{" "}
                           <a
                             href={`tel:${creditorPhone.replace(/\s/g, "")}`}
-                            className="text-white/80 underline decoration-dotted underline-offset-2"
+                            className="text-theme-text/80 underline decoration-dotted underline-offset-2"
                           >
                             {creditorPhone}
                           </a>
@@ -439,7 +439,7 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
 
                 return (
                   <div key={receivable.from} className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-1.5 text-white/70">
+                    <span className="text-theme-text/70 flex items-center gap-1.5">
                       <ArrowDownLeft size={14} className="text-theme-accent/70 shrink-0" />
                       {debtor}
                     </span>
@@ -462,7 +462,7 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
           )}
 
           {pendingOutgoing.length > 0 && (
-            <div className="flex flex-col gap-2.5 border-t border-dashed border-white/10 pt-3">
+            <div className="border-theme-border flex flex-col gap-2.5 border-t border-dashed pt-3">
               <span className="text-theme-muted/60 text-[11px] tracking-wider">
                 Oczekuje na potwierdzenie
               </span>
@@ -472,7 +472,7 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
 
                 return (
                   <div key={settlement.id} className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-white/70">
+                    <span className="text-theme-text/70 flex items-center gap-1.5">
                       <ArrowUpRight size={14} className="text-theme-primary/70 shrink-0" />
                       {getUserName(recipientId ?? "")}
                     </span>
@@ -491,11 +491,15 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
       <div className="bg-theme-primary/10 border-theme-primary/20 relative -mx-2 mt-1 flex justify-between overflow-hidden rounded-lg border px-3 py-3 text-[16px] font-bold uppercase">
         <div className="bg-theme-primary/5 absolute inset-0 mix-blend-overlay" />
 
-        <span className="relative z-10 text-white">Twój bilans</span>
+        <span className="text-theme-text relative z-10">Twój bilans</span>
 
         <span
           className={`relative z-10 ${
-            balance > 0 ? "text-theme-accent" : balance < 0 ? "text-theme-primary" : "text-white"
+            balance > 0
+              ? "text-theme-accent"
+              : balance < 0
+                ? "text-theme-primary"
+                : "text-theme-text"
           }`}
         >
           {balance > 0 ? "+" : ""}

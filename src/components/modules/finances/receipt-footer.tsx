@@ -14,16 +14,16 @@ const BARCODE_PATTERN = [
 export const ReceiptFooter = memo(function ReceiptFooter({ tripIdShort }: ReceiptFooterProps) {
   return (
     <>
-      <div className="mt-6 flex flex-col gap-1 border-t border-dashed border-white/20 pt-5 text-center text-[13px] leading-none font-bold">
-        <span className="text-theme-primary mx-auto mb-1 block w-fit rounded bg-white/10 px-2 py-1">
+      <div className="border-theme-border mt-6 flex flex-col gap-1 border-t border-dashed pt-5 text-center text-[13px] leading-none font-bold">
+        <span className="text-theme-primary bg-theme-text/10 mx-auto mb-1 block w-fit rounded px-2 py-1">
           GWARANCJA
         </span>
 
-        <span className="tracking-tight text-white/90 uppercase">W naszym Skarbcu</span>
+        <span className="text-theme-text/90 tracking-tight uppercase">W naszym Skarbcu</span>
 
-        <span className="tracking-tight text-white/90 uppercase">nie zgubimy</span>
+        <span className="text-theme-text/90 tracking-tight uppercase">nie zgubimy</span>
 
-        <span className="mt-1 text-[17px] tracking-widest text-white uppercase">
+        <span className="text-theme-text mt-1 text-[17px] tracking-widest uppercase">
           żadnej złotówki
         </span>
 
@@ -35,7 +35,11 @@ export const ReceiptFooter = memo(function ReceiptFooter({ tripIdShort }: Receip
       <div className="mt-6 flex flex-col items-center gap-1">
         <div className="flex h-10 w-full items-center justify-center gap-0.5 opacity-70">
           {BARCODE_PATTERN.map((width, index) => (
-            <div key={index} className="h-full bg-white/80" style={{ width: `${width * 1.5}px` }} />
+            <div
+              key={index}
+              className="bg-theme-text/80 h-full"
+              style={{ width: `${width * 1.5}px` }}
+            />
           ))}
         </div>
 
@@ -44,7 +48,7 @@ export const ReceiptFooter = memo(function ReceiptFooter({ tripIdShort }: Receip
         </span>
       </div>
 
-      <div className="mt-6 flex flex-col items-center border-t border-white/10 pt-4">
+      <div className="border-theme-border mt-6 flex flex-col items-center border-t pt-4">
         <span className="text-theme-muted/70 mb-2 text-[10px] font-bold tracking-widest uppercase">
           Odbierz rabat na 10 PLN
         </span>

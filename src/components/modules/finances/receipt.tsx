@@ -69,7 +69,7 @@ export const ExpenseReceipt = memo(function ExpenseReceipt({
   });
 
   return (
-    <div className="from-theme-primary/10 selection:bg-theme-primary/30 mx-auto w-full max-w-sm rounded-2xl border border-white/10 bg-linear-to-b to-transparent p-6 font-mono text-white/90 shadow-2xl">
+    <div className="from-theme-primary/10 selection:bg-theme-primary/30 border-theme-border text-theme-text/90 mx-auto w-full max-w-sm rounded-2xl border bg-linear-to-b to-transparent p-6 font-mono shadow-2xl">
       {/* DODAŁEM: activeUserName */}
       <ReceiptHeader
         tripIdShort={tripIdShort}

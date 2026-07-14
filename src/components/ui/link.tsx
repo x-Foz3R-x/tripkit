@@ -9,8 +9,9 @@ export const linkVariants = cva(
   {
     variants: {
       variant: {
-        primary: "bg-theme-primary text-white hover:bg-theme-primary/90 shadow-sm",
-        outline: "border border-white/10 text-theme-text hover:bg-white/5",
+        primary:
+          "bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary-hover active:bg-theme-primary-active shadow-sm",
+        outline: "border-theme-border text-theme-text hover:bg-theme-card border",
         unset: "",
       },
       size: {

@@ -7,15 +7,18 @@ import { cn } from "~/lib/utils";
 
 // Twoja piękna inżynieria z CVA, ale z dynamicznymi kolorami motywu!
 export const ButtonVariants = cva(
-  "inline-flex items-center justify-center whitespace-nowrap text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 disabled:pointer-events-none disabled:opacity-50 select-none",
+  "inline-flex items-center justify-center whitespace-nowrap text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary/50 disabled:pointer-events-none disabled:opacity-50 select-none",
   {
     variants: {
       variant: {
-        default: "bg-theme-primary text-white shadow hover:bg-theme-primary/90",
-        outline: "border border-white/20 bg-transparent hover:bg-theme-card hover:text-text",
-        secondary: "bg-theme-card text-text hover:bg-theme-card/80 border border-white/5",
-        ghost: "hover:bg-theme-card hover:text-text",
-        link: "text-primary underline-offset-4 hover:underline",
+        default:
+          "bg-theme-primary text-theme-primary-foreground shadow hover:bg-theme-primary-hover active:bg-theme-primary-active",
+        outline:
+          "border-theme-border text-theme-text border bg-transparent hover:bg-theme-card-raised",
+        secondary:
+          "bg-theme-card text-theme-text hover:bg-theme-card-raised border-theme-border border",
+        ghost: "text-theme-text hover:bg-theme-card",
+        link: "text-theme-primary underline-offset-4 hover:underline",
       },
       size: {
         default: "h-11 px-4 py-2 rounded-xl",

@@ -6,12 +6,13 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "~/lib/utils";
 
 const InputVariants = cva(
-  "peer w-full appearance-none bg-transparent text-text outline-none placeholder:text-muted transition-colors focus:outline-none disabled:pointer-events-none disabled:opacity-50",
+  "text-theme-text placeholder:text-theme-muted peer w-full appearance-none bg-transparent outline-none transition-colors focus:outline-none disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "border border-white/10 bg-card focus:border-primary",
-        insetLabel: "border border-white/10 bg-card pt-5 pb-1 shadow-sm focus:border-primary",
+        default: "border-theme-border bg-theme-card focus:border-theme-primary border",
+        insetLabel:
+          "border-theme-border bg-theme-card focus:border-theme-primary border pt-5 pb-1 shadow-sm",
       },
       size: {
         default: "h-12 rounded-xl px-4 text-base",
@@ -72,7 +73,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         <label
           htmlFor={inputId}
           className={cn(
-            "text-theme-muted peer-focus:text-primary pointer-events-none absolute inset-0 flex origin-top-left items-center overflow-hidden px-4 text-base transition-all duration-150 ease-in-out select-none peer-focus:translate-x-0.5 peer-focus:-translate-y-1.5 peer-focus:scale-[0.75]",
+            "text-theme-muted peer-focus:text-theme-primary pointer-events-none absolute inset-0 flex origin-top-left items-center overflow-hidden px-4 text-base transition-all duration-150 ease-in-out select-none peer-focus:translate-x-0.5 peer-focus:-translate-y-1.5 peer-focus:scale-[0.75]",
             hasValue && "text-theme-muted translate-x-0.5 -translate-y-1.5 scale-[0.75]",
             className?.label,
           )}

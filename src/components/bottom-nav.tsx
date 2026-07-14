@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Landmark, Trophy, ShoppingBasket } from "lucide-react";
 import { cn } from "~/lib/utils";
+import { useTrip } from "~/providers/trip-provider";
 
 const NAV_ITEMS = [
   { name: "Baza", href: "/", icon: Home },
@@ -14,9 +15,12 @@ const NAV_ITEMS = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const { activeSession } = useTrip();
+
+  if (!activeSession) return null;
 
   return (
-    <nav className="bg-witch-bg/80 pb-safe fixed bottom-0 left-0 z-50 w-full border-t border-white/10 px-6 pt-2 backdrop-blur-md">
+    <nav className="bg-theme-bg/90 border-theme-border pb-safe fixed bottom-0 left-0 z-50 w-full border-t px-6 pt-2 backdrop-blur-md">
       <div className="mx-auto flex max-w-md items-center justify-around pt-2 pb-4">
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;
@@ -28,13 +32,13 @@ export function BottomNav() {
               href={item.href}
               className={cn(
                 "flex flex-col items-center gap-1 transition-colors duration-200",
-                isActive ? "text-witch-primary" : "text-gray-500 hover:text-gray-300",
+                isActive ? "text-theme-primary" : "text-theme-muted hover:text-theme-text",
               )}
             >
               <div
                 className={cn(
                   "rounded-2xl p-2 transition-all duration-300",
-                  isActive && "bg-witch-primary/20",
+                  isActive && "bg-theme-primary/15",
                 )}
               >
                 <Icon className="h-6 w-6" strokeWidth={isActive ? 2.5 : 2} />

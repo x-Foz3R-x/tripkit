@@ -13,17 +13,17 @@ export const ReceiptSummary = memo(function ReceiptSummary({
 }: ReceiptSummaryProps) {
   return (
     <>
-      <div className="mt-3 flex flex-col gap-1.5 border-t border-dashed border-white/20 pt-4 text-[12px] uppercase">
-        <div className="flex justify-between font-bold text-white/80">
+      <div className="border-theme-border mt-3 flex flex-col gap-1.5 border-t border-dashed pt-4 text-[12px] uppercase">
+        <div className="text-theme-text/80 flex justify-between font-bold">
           <span>Wydatki razem</span>
           <span>{totalCost.toFixed(2)}</span>
         </div>
-        <div className="flex justify-between font-bold text-white/80">
+        <div className="text-theme-text/80 flex justify-between font-bold">
           <span>Spłacono razem</span>
           <span>{totalSettled.toFixed(2)}</span>
         </div>
 
-        <div className="mt-2 flex justify-between text-[17px] font-bold tracking-wider text-white">
+        <div className="text-theme-text mt-2 flex justify-between text-[17px] font-bold tracking-wider">
           <span>Suma PLN</span>
           <span>{totalCost.toFixed(2)}</span>
         </div>

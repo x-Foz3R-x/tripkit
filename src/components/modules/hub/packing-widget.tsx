@@ -107,7 +107,7 @@ export function PackingWidget() {
                   key={category.category}
                   className={`flex flex-col gap-2 transition-opacity ${isCatDone ? "opacity-50" : "opacity-100"}`}
                 >
-                  <h3 className="font-body text-theme-text mb-1 border-b border-white/5 pb-1 font-bold">
+                  <h3 className="font-body text-theme-text border-theme-border mb-1 border-b pb-1 font-bold">
                     {category.category}
                   </h3>
                   <div className="flex flex-col">
