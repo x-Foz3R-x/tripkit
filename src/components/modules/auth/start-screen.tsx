@@ -130,7 +130,7 @@ function StartScreenContent({ onCreateNew }: StartScreenProps) {
           </div>
 
           <div className="flex flex-col gap-2">
-            <h1 className="font-heading text-theme-text text-4xl font-bold">Wyjazdnik</h1>
+            <h1 className="font-heading text-theme-text text-4xl font-bold">Wyjezdnik</h1>
             <p className="text-theme-muted font-body px-4 text-sm">
               Wpisz 6-znakowy kod wyjazdu, aby dołączyć do ekipy.
             </p>

@@ -1,4 +1,4 @@
-# 🏕️ Wyjazdnik
+# 🏕️ Wyjezdnik
 
 Modularna aplikacja do zarządzania wyjazdami ze znajomymi. Zaprojektowana tak, aby dostosowywać się do charakteru wyjazdu poprzez włączanie i wyłączanie konkretnych modułów (Finanse, Punkty, Harmonogram).
 

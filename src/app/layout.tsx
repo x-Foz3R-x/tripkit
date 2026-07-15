@@ -21,7 +21,7 @@ const fontMono = Inconsolata({
 });
 
 export const metadata: Metadata = {
-  title: "Wyjazdnik",
+  title: "Wyjezdnik",
   description: "Baza wyjazdu i organizacja w jednym miejscu.",
   icons: {
     icon: "/favicon.svg",

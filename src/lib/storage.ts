@@ -1,12 +1,18 @@
-const STORAGE_PREFIX = "wyjazdnik";
-const LEGACY_STORAGE_PREFIX = ["trip", "kit"].join("");
+const STORAGE_PREFIX = "wyjezdnik";
+const LEGACY_STORAGE_PREFIXES = ["wyjazdnik", ["trip", "kit"].join("")];
 
 function getStorageKey(key: string) {
   return `${STORAGE_PREFIX}_${key}`;
 }
 
-function getLegacyStorageKey(key: string) {
-  return `${LEGACY_STORAGE_PREFIX}_${key}`;
+function getLegacyStorageKeys(key: string) {
+  return LEGACY_STORAGE_PREFIXES.map((prefix) => `${prefix}_${key}`);
+}
+
+function removeLegacyStorageItems(key: string) {
+  for (const legacyStorageKey of getLegacyStorageKeys(key)) {
+    localStorage.removeItem(legacyStorageKey);
+  }
 }
 
 export function getAppStorageItem(key: string) {
@@ -15,23 +21,25 @@ export function getAppStorageItem(key: string) {
 
   if (storedValue !== null) return storedValue;
 
-  const legacyStorageKey = getLegacyStorageKey(key);
-  const legacyValue = localStorage.getItem(legacyStorageKey);
+  for (const legacyStorageKey of getLegacyStorageKeys(key)) {
+    const legacyValue = localStorage.getItem(legacyStorageKey);
 
-  if (legacyValue !== null) {
-    localStorage.setItem(storageKey, legacyValue);
-    localStorage.removeItem(legacyStorageKey);
+    if (legacyValue !== null) {
+      localStorage.setItem(storageKey, legacyValue);
+      removeLegacyStorageItems(key);
+      return legacyValue;
+    }
   }
 
-  return legacyValue;
+  return null;
 }
 
 export function setAppStorageItem(key: string, value: string) {
   localStorage.setItem(getStorageKey(key), value);
-  localStorage.removeItem(getLegacyStorageKey(key));
+  removeLegacyStorageItems(key);
 }
 
 export function removeAppStorageItem(key: string) {
   localStorage.removeItem(getStorageKey(key));
-  localStorage.removeItem(getLegacyStorageKey(key));
+  removeLegacyStorageItems(key);
 }
