@@ -1,8 +1,4 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import { Flame, Home, Navigation } from "lucide-react";
-import { Skeleton } from "~/components/ui/skeleton";
 
 // Placeholderowe dane - łatwo je później podmienić lub przenieść do bazy
 const SCHEDULE_DATA = [
@@ -58,21 +54,6 @@ const SCHEDULE_DATA = [
 ];
 
 export default function SchedulePage() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return (
-      <div className="flex flex-col gap-6 px-4 pt-4 pb-24">
-        <Skeleton className="h-12 w-3/4 rounded-xl" />
-        <Skeleton className="h-64 w-full rounded-2xl" />
-      </div>
-    );
-  }
-
   return (
     <div className="animate-fade-in pb-safe flex flex-col gap-6">
       <header className="flex items-center justify-between pt-4 pb-2">

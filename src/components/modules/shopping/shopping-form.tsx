@@ -5,8 +5,8 @@ import { Check, ShoppingCart, UsersRound } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { supabase } from "~/lib/supabase";
-import { env } from "~/env";
 import type { Database } from "~/types/database";
+import { useTripRoute } from "~/providers/trip-route-provider";
 
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
 
@@ -21,6 +21,7 @@ export const ShoppingForm = memo(function ShoppingForm({
   activeUserId,
   onSuccess,
 }: ShoppingFormProps) {
+  const { tripId } = useTripRoute();
   const [itemName, setItemName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [forUsers, setForUsers] = useState<string[]>([]);
@@ -39,7 +40,7 @@ export const ShoppingForm = memo(function ShoppingForm({
     setIsLoading(true);
 
     const { error } = await supabase.from("shopping_list").insert({
-      trip_id: env.NEXT_PUBLIC_TRIP_ID,
+      trip_id: tripId,
       added_by: activeUserId,
       item_name: itemName.trim(),
       for_users: isSpecificUsers ? forUsers : [],

@@ -3,10 +3,19 @@ import { WelcomeCard } from "~/components/modules/hub/welcome-card";
 import { PlaylistWidget } from "~/components/modules/hub/playlist-card";
 import { TodayScheduleWidget } from "~/components/modules/hub/today-schedule";
 import { PackingWidget } from "~/components/modules/hub/packing-widget";
+import { TripShareCard } from "~/components/modules/hub/trip-share-card";
 
-export function Dashboard() {
-  const tripName = "Stężyca 2026";
-
+export function Dashboard({
+  participant,
+  shareAccess,
+  tripName,
+  urlKey,
+}: {
+  participant: { id: string; name: string };
+  shareAccess?: { inviteToken: string; joinPin: string } | null;
+  tripName: string;
+  urlKey: string;
+}) {
   return (
     <div className="animate-fade-in pb-safe flex flex-col gap-8">
       <header className="flex flex-col gap-2 pt-4 pb-2">
@@ -18,7 +27,11 @@ export function Dashboard() {
       </header>
 
       <section className="flex flex-col gap-5">
-        <WelcomeCard />
+        <WelcomeCard participant={participant} urlKey={urlKey} />
+
+        {shareAccess && (
+          <TripShareCard inviteToken={shareAccess.inviteToken} joinPin={shareAccess.joinPin} />
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <a

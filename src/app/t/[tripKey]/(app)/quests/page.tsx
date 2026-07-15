@@ -3,7 +3,9 @@
 import { useEffect, useState } from "react";
 import { Coffee, Camera, GlassWater, CheckCircle2, Lock, UserPlus } from "lucide-react";
 import { Link } from "~/components/ui/link";
-import { getAppStorageItem, setAppStorageItem } from "~/lib/storage";
+import { getAppStorageItem, removeAppStorageItem, setAppStorageItem } from "~/lib/storage";
+import { useTripRoute } from "~/providers/trip-route-provider";
+import { Skeleton } from "~/components/ui/skeleton";
 
 const QUESTS = [
   {
@@ -41,30 +43,28 @@ type QuestState = {
 };
 
 export default function QuestsPage() {
+  const { tripId, urlKey, userName: activeUserName } = useTripRoute();
   const [mounted, setMounted] = useState(false);
-  const [activeUserName, setActiveUserName] = useState<string | null>(null);
   const [questStates, setQuestStates] = useState<Record<string, QuestState>>({});
+  const storageKey = `quests_${tripId}`;
 
   useEffect(() => {
-    const storedUserName = getAppStorageItem("user_name");
-    if (storedUserName) {
-      setActiveUserName(storedUserName);
-    }
-
-    const savedStates = getAppStorageItem("quests");
+    const savedStates = getAppStorageItem(storageKey) ?? getAppStorageItem("quests");
     if (savedStates) {
       try {
         setQuestStates(JSON.parse(savedStates) as Record<string, QuestState>);
+        setAppStorageItem(storageKey, savedStates);
+        removeAppStorageItem("quests");
       } catch (e) {
         console.error("Błąd wczytywania zleceń", e);
       }
     }
     setMounted(true);
-  }, []);
+  }, [storageKey]);
 
   const saveState = (newState: Record<string, QuestState>) => {
     setQuestStates(newState);
-    setAppStorageItem("quests", JSON.stringify(newState));
+    setAppStorageItem(storageKey, JSON.stringify(newState));
   };
 
   const handleClaim = (questId: string) => {
@@ -83,7 +83,7 @@ export default function QuestsPage() {
     });
   };
 
-  if (!mounted) return null;
+  if (!mounted) return <Skeleton className="mt-4 h-96 w-full rounded-2xl" />;
 
   if (!activeUserName) {
     return (
@@ -98,7 +98,7 @@ export default function QuestsPage() {
           <p className="font-body text-theme-muted mx-auto mb-6 max-w-64 text-sm">
             Musisz posiadać tożsamość, żeby przyjmować zlecenia.
           </p>
-          <Link.Arrow href="/" variant="primary" size="base">
+          <Link.Arrow href={`/t/${urlKey}`} variant="primary" size="base">
             Wróć do Bazy
           </Link.Arrow>
         </div>

@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { env } from "~/env";
 import type { Database } from "~/types/database";
 import { isSettlementEntry, type FinanceExpense, type Transaction } from "~/lib/finances";
 import { ReceiptHeader } from "~/components/modules/finances/receipt-header";
@@ -9,6 +8,7 @@ import { ReceiptExpenseList } from "~/components/modules/finances/receipt-expens
 import { ReceiptSummary } from "~/components/modules/finances/receipt-summary";
 import { ReceiptPaymentSection } from "~/components/modules/finances/receipt-payment-section";
 import { ReceiptFooter } from "~/components/modules/finances/receipt-footer";
+import { useTripRoute } from "~/providers/trip-route-provider";
 
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name"> & {
   phone?: string | null;
@@ -35,6 +35,7 @@ export const ExpenseReceipt = memo(function ExpenseReceipt({
   onDataChanged,
   onAddExpense,
 }: ExpenseReceiptProps) {
+  const { tripId } = useTripRoute();
   const regularExpenses = useMemo(
     () => expenses.filter((expense) => !isSettlementEntry(expense)),
     [expenses],
@@ -58,7 +59,7 @@ export const ExpenseReceipt = memo(function ExpenseReceipt({
     [users, activeUserId],
   );
 
-  const tripIdShort = env.NEXT_PUBLIC_TRIP_ID.split("-")[0]?.toUpperCase() ?? "01103";
+  const tripIdShort = tripId.split("-")[0]?.toUpperCase() ?? "01103";
 
   const issuedAt = new Date().toLocaleString("pl-PL", {
     day: "2-digit",

@@ -5,8 +5,8 @@ import { Check, ChevronDown, ReceiptText, UserRound, UsersRound } from "lucide-r
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { supabase } from "~/lib/supabase";
-import { env } from "~/env";
 import type { Database } from "~/types/database";
+import { useTripRoute } from "~/providers/trip-route-provider";
 
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
 
@@ -21,6 +21,7 @@ export const ExpenseForm = memo(function ExpenseForm({
   activeUserId,
   onSuccess,
 }: ExpenseFormProps) {
+  const { tripId } = useTripRoute();
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,7 +54,7 @@ export const ExpenseForm = memo(function ExpenseForm({
     setIsLoading(true);
 
     const { error } = await supabase.from("expenses").insert({
-      trip_id: env.NEXT_PUBLIC_TRIP_ID,
+      trip_id: tripId,
       user_id: payerId,
       amount: parsedAmount,
       description: description.trim(),

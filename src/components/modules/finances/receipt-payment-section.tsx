@@ -3,7 +3,6 @@
 import { memo, useEffect, useState } from "react";
 import { ArrowDownLeft, ArrowUpRight, Check, HelpCircle, X } from "lucide-react";
 import { supabase } from "~/lib/supabase";
-import { env } from "~/env";
 import type { Database } from "~/types/database";
 import { getAppStorageItem, setAppStorageItem } from "~/lib/storage";
 import {
@@ -13,6 +12,7 @@ import {
   type SettlementStatus,
   type Transaction,
 } from "~/lib/finances";
+import { useTripRoute } from "~/providers/trip-route-provider";
 
 // Zaktualizowany typ o 'phone'
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name"> & {
@@ -41,6 +41,7 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
   receivables,
   onDataChanged,
 }: ReceiptPaymentSectionProps) {
+  const { tripId } = useTripRoute();
   const [confirmingDebtTo, setConfirmingDebtTo] = useState<string | null>(null);
   const [processingKey, setProcessingKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -100,7 +101,7 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
     setProcessingKey(processingId);
 
     const { error } = await supabase.from("expenses").insert({
-      trip_id: env.NEXT_PUBLIC_TRIP_ID,
+      trip_id: tripId,
       user_id: activeUserId,
       amount,
       description: "Zgłoszona wpłata",

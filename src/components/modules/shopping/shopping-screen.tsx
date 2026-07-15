@@ -1,44 +1,44 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Lock, Plus, ShoppingBasket } from "lucide-react";
 import { supabase } from "~/lib/supabase";
-import { env } from "~/env";
 import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { Skeleton } from "~/components/ui/skeleton";
 import { Link } from "~/components/ui/link";
 import { ShoppingForm } from "~/components/modules/shopping/shopping-form";
 import { ShoppingList } from "~/components/modules/shopping/shopping-list";
 import type { Database } from "~/types/database";
-import { getAppStorageItem } from "~/lib/storage";
+import { useTripRoute } from "~/providers/trip-route-provider";
 
 type ShoppingItem = Database["public"]["Tables"]["shopping_list"]["Row"];
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
 
-export default function ShoppingPage() {
-  const [mounted, setMounted] = useState(false);
-  const [activeUserId, setActiveUserId] = useState<string | null>(null);
+export function ShoppingScreen({
+  initialItems,
+  initialUsers,
+}: {
+  initialItems: ShoppingItem[];
+  initialUsers: User[];
+}) {
+  const { modules, tripId, urlKey, userId: activeUserId } = useTripRoute();
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [items, setItems] = useState<ShoppingItem[]>([]);
+  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [items, setItems] = useState<ShoppingItem[]>(initialItems);
 
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const isFinanceEnabled = env.NEXT_PUBLIC_FINANCE_ENABLED === "true"; // Możemy użyć tej samej flagi co do finansów
+  const isFinanceEnabled = modules.shopping;
 
   const loadData = useCallback(async () => {
     try {
       const [usersRes, listRes] = await Promise.all([
-        supabase
-          .from("users")
-          .select("id, name")
-          .eq("trip_id", env.NEXT_PUBLIC_TRIP_ID)
-          .order("name"),
+        supabase.from("users").select("id, name").eq("trip_id", tripId).order("name"),
         supabase
           .from("shopping_list")
           .select("*")
-          .eq("trip_id", env.NEXT_PUBLIC_TRIP_ID)
+          .eq("trip_id", tripId)
           .order("created_at", { ascending: false }),
       ]);
 
@@ -49,22 +49,7 @@ export default function ShoppingPage() {
     } finally {
       setIsInitialLoading(false);
     }
-  }, []);
-
-  useEffect(() => {
-    const storedUserId = getAppStorageItem("user_id");
-    setMounted(true);
-
-    if (!storedUserId) {
-      setIsInitialLoading(false);
-      return;
-    }
-
-    setActiveUserId(storedUserId);
-    void loadData();
-  }, [loadData]);
-
-  if (!mounted) return null;
+  }, [tripId]);
 
   if (!isFinanceEnabled || !activeUserId) {
     return (
@@ -79,7 +64,7 @@ export default function ShoppingPage() {
           <p className="font-body text-theme-muted mx-auto mb-6 max-w-64 text-sm">
             Musisz najpierw powiedzieć nam, kim jesteś w Księdze Wyjazdu.
           </p>
-          <Link.Arrow href="/" variant="primary" size="base">
+          <Link.Arrow href={`/t/${urlKey}`} variant="primary" size="base">
             Wróć do Bazy
           </Link.Arrow>
         </div>

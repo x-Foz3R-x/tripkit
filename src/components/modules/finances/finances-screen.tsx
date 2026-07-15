@@ -1,9 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Lock } from "lucide-react";
 import { supabase } from "~/lib/supabase";
-import { env } from "~/env";
 import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { ExpenseForm } from "~/components/modules/finances/receipt-form";
 import { calculateFinances, type FinanceExpense } from "~/lib/finances";
@@ -11,73 +10,68 @@ import { Skeleton } from "~/components/ui/skeleton";
 import { Link } from "~/components/ui/link";
 import { ExpenseReceipt } from "~/components/modules/finances/receipt";
 import type { Database } from "~/types/database";
-import { getAppStorageItem } from "~/lib/storage";
+import { useTripRoute } from "~/providers/trip-route-provider";
 
 // DODAŁEM: & { phone?: string | null }
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name"> & {
   phone?: string | null;
 };
 
-export default function FinancesPage() {
-  const [mounted, setMounted] = useState(false);
-  const [activeUserId, setActiveUserId] = useState<string | null>(null);
+export function FinancesScreen({
+  initialExpenses,
+  initialUsers,
+}: {
+  initialExpenses: FinanceExpense[];
+  initialUsers: User[];
+}) {
+  const { modules, tripId, urlKey, userId: activeUserId } = useTripRoute();
 
-  const [users, setUsers] = useState<User[]>([]);
-  const [expenses, setExpenses] = useState<FinanceExpense[]>([]);
+  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [expenses, setExpenses] = useState<FinanceExpense[]>(initialExpenses);
 
-  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const isFinanceEnabled = env.NEXT_PUBLIC_FINANCE_ENABLED === "true";
+  const isFinanceEnabled = modules.finances;
 
-  const loadData = useCallback(async (showInitialLoader = false) => {
-    if (showInitialLoader) setIsInitialLoading(true);
-    setHasError(false);
+  const loadData = useCallback(
+    async (showInitialLoader = false) => {
+      if (showInitialLoader) setIsInitialLoading(true);
+      setHasError(false);
 
-    try {
-      const [usersRes, expensesRes] = await Promise.all([
-        supabase
-          .from("users")
-          // DODAŁEM: pobieranie "phone"
-          .select("id, name, phone")
-          .eq("trip_id", env.NEXT_PUBLIC_TRIP_ID)
-          .order("name"),
-        supabase
-          .from("expenses")
-          .select("*")
-          .eq("trip_id", env.NEXT_PUBLIC_TRIP_ID)
-          .order("created_at", { ascending: false }),
-      ]);
+      try {
+        const [usersRes, expensesRes] = await Promise.all([
+          supabase
+            .from("users")
+            // DODAŁEM: pobieranie "phone"
+            .select("id, name, phone")
+            .eq("trip_id", tripId)
+            .order("name"),
+          supabase
+            .from("expenses")
+            .select("*")
+            .eq("trip_id", tripId)
+            .order("created_at", { ascending: false }),
+        ]);
 
-      if (usersRes.error || expensesRes.error) {
-        console.error("Błąd wczytywania finansów:", usersRes.error ?? expensesRes.error);
+        if (usersRes.error || expensesRes.error) {
+          console.error("Błąd wczytywania finansów:", usersRes.error ?? expensesRes.error);
+          setHasError(true);
+          return;
+        }
+
+        setUsers(usersRes.data ?? []);
+        setExpenses(expensesRes.data ?? []);
+      } catch (error) {
+        console.error("Błąd wczytywania finansów:", error);
         setHasError(true);
-        return;
+      } finally {
+        if (showInitialLoader) setIsInitialLoading(false);
       }
-
-      setUsers(usersRes.data ?? []);
-      setExpenses(expensesRes.data ?? []);
-    } catch (error) {
-      console.error("Błąd wczytywania finansów:", error);
-      setHasError(true);
-    } finally {
-      if (showInitialLoader) setIsInitialLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    const storedUserId = getAppStorageItem("user_id");
-    setMounted(true);
-
-    if (!storedUserId) {
-      setIsInitialLoading(false);
-      return;
-    }
-
-    setActiveUserId(storedUserId);
-    void loadData(true);
-  }, [loadData]);
+    },
+    [tripId],
+  );
 
   const refreshWithoutScrollJump = useCallback(async () => {
     const previousScrollPosition = window.scrollY;
@@ -115,8 +109,6 @@ export default function FinancesPage() {
     void refreshWithoutScrollJump();
   }, [refreshWithoutScrollJump]);
 
-  if (!mounted) return null;
-
   const activeUserBalance = activeUserId ? (balances[activeUserId] ?? 0) : 0;
   const showBlockingError = hasError && users.length === 0 && expenses.length === 0;
 
@@ -136,7 +128,7 @@ export default function FinancesPage() {
                 ? "Skarbiec jest chwilowo zamknięty. Wspólne rozliczenia pojawią się, gdy zacznie się wyjazd."
                 : "Musisz najpierw powiedzieć nam, kim jesteś w Księdze Wyjazdu."}
             </p>
-            <Link.Arrow href="/" variant="primary" size="base">
+            <Link.Arrow href={`/t/${urlKey}`} variant="primary" size="base">
               Wróć do Bazy
             </Link.Arrow>
           </div>

@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { Backpack, ChevronRight } from "lucide-react";
-import { env } from "~/env";
 import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { Checkbox } from "~/components/ui/checkbox";
+import { Skeleton } from "~/components/ui/skeleton";
 import { getAppStorageItem, setAppStorageItem } from "~/lib/storage";
+import { useTripRoute } from "~/providers/trip-route-provider";
 
 const PACKING_LIST = [
   {
@@ -29,16 +30,14 @@ const PACKING_LIST = [
 ];
 
 export function PackingWidget() {
+  const { tripId, userId } = useTripRoute();
   const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
-  const [activeUserId, setActiveUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedUserId = getAppStorageItem("user_id");
-    if (storedUserId) {
-      setActiveUserId(storedUserId);
-      const storageKey = `packing_${env.NEXT_PUBLIC_TRIP_ID}_${storedUserId}`;
+    if (userId) {
+      const storageKey = `packing_${tripId}_${userId}`;
       const savedData = getAppStorageItem(storageKey);
       if (savedData) {
         try {
@@ -49,17 +48,17 @@ export function PackingWidget() {
       }
     }
     setMounted(true);
-  }, [isOpen]);
+  }, [isOpen, tripId, userId]);
 
   const handleToggle = (item: string, isChecked: boolean) => {
-    if (!activeUserId) return;
+    if (!userId) return;
     const newCheckedItems = { ...checkedItems, [item]: isChecked };
     setCheckedItems(newCheckedItems);
-    const storageKey = `packing_${env.NEXT_PUBLIC_TRIP_ID}_${activeUserId}`;
+    const storageKey = `packing_${tripId}_${userId}`;
     setAppStorageItem(storageKey, JSON.stringify(newCheckedItems));
   };
 
-  if (!mounted) return null;
+  if (!mounted) return <Skeleton className="h-28 w-full rounded-2xl" />;
 
   const totalItems = PACKING_LIST.reduce((acc, cat) => acc + cat.items.length, 0);
   const checkedCount = Object.values(checkedItems).filter(Boolean).length;
@@ -95,7 +94,7 @@ export function PackingWidget() {
       </button>
 
       <ResponsiveDialog isOpen={isOpen} setIsOpen={setIsOpen}>
-        {!activeUserId ? (
+        {!userId ? (
           <p className="font-body text-theme-muted p-4 text-center text-sm">
             Wybierz swój profil w Bazie, żeby odblokować pakowanie.
           </p>

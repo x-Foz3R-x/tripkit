@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { Backpack, Trash2 } from "lucide-react";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Button } from "~/components/ui/button";
+import { Skeleton } from "~/components/ui/skeleton";
 import { getAppStorageItem, removeAppStorageItem, setAppStorageItem } from "~/lib/storage";
+import { useTripRoute } from "~/providers/trip-route-provider";
 
 const PACKING_LIST = [
   {
@@ -28,35 +30,39 @@ const PACKING_LIST = [
 ];
 
 export default function PackingPage() {
+  const { tripId, userId } = useTripRoute();
   const [mounted, setMounted] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+  const storageKey = `packing-list_${tripId}_${userId ?? "anonymous"}`;
 
   useEffect(() => {
-    const savedData = getAppStorageItem("packing-list");
+    const savedData = getAppStorageItem(storageKey) ?? getAppStorageItem("packing-list");
     if (savedData) {
       try {
         setCheckedItems(JSON.parse(savedData) as Record<string, boolean>);
+        setAppStorageItem(storageKey, savedData);
+        removeAppStorageItem("packing-list");
       } catch (e) {
         console.error("Błąd wczytywania listy pakowania", e);
       }
     }
     setMounted(true);
-  }, []);
+  }, [storageKey]);
 
   const handleToggle = (item: string, isChecked: boolean) => {
     const newCheckedItems = { ...checkedItems, [item]: isChecked };
     setCheckedItems(newCheckedItems);
-    setAppStorageItem("packing-list", JSON.stringify(newCheckedItems));
+    setAppStorageItem(storageKey, JSON.stringify(newCheckedItems));
   };
 
   const handleClear = () => {
     if (confirm("Na pewno chcesz zresetować swoją listę do spakowania?")) {
       setCheckedItems({});
-      removeAppStorageItem("packing-list");
+      removeAppStorageItem(storageKey);
     }
   };
 
-  if (!mounted) return null;
+  if (!mounted) return <Skeleton className="mt-4 h-96 w-full rounded-2xl" />;
 
   const totalItems = PACKING_LIST.reduce((acc, cat) => acc + cat.items.length, 0);
   const checkedCount = Object.values(checkedItems).filter(Boolean).length;
