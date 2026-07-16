@@ -1,22 +1,6 @@
 import { cache } from "react";
 import { createServerSupabaseClient } from "~/lib/supabase/server";
-import type { Json } from "~/types/database";
-
-export type TripModules = {
-  finances: boolean;
-  shopping: boolean;
-  scoreboard: boolean;
-};
-
-export function parseTripModules(value: Json | null): TripModules {
-  const modules = value && typeof value === "object" && !Array.isArray(value) ? value : {};
-
-  return {
-    finances: modules.finances !== false,
-    shopping: modules.shopping !== false,
-    scoreboard: modules.scoreboard === true,
-  };
-}
+export { parseTripModules } from "~/lib/trip-config";
 
 export const getTripByUrlKey = cache(async (urlKey: string) => {
   if (!/^[0-9a-f]{12}$/.test(urlKey)) return null;
@@ -24,7 +8,7 @@ export const getTripByUrlKey = cache(async (urlKey: string) => {
   const supabase = createServerSupabaseClient();
   const { data, error } = await supabase
     .from("trips")
-    .select("id, name, url_key, modules, theme, start_date, end_date, invite_token, join_pin")
+    .select("*")
     .eq("url_key", urlKey)
     .maybeSingle();
 
@@ -43,4 +27,21 @@ export const getTripParticipant = cache(async (tripId: string, userId: string) =
 
   if (error) throw error;
   return data;
+});
+
+export const getTripPlaylists = cache(async (tripId: string, legacyUrl: string | null) => {
+  const supabase = createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("trip_playlists")
+    .select("id, name, url, sort_order")
+    .eq("trip_id", tripId)
+    .order("sort_order")
+    .order("created_at");
+
+  if (error && !["42P01", "PGRST205"].includes(error.code)) throw error;
+  if (data?.length) return data;
+
+  return legacyUrl
+    ? [{ id: "legacy", name: "Playlista wyjazdu", url: legacyUrl, sort_order: 0 }]
+    : [];
 });

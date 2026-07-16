@@ -1,4 +1,27 @@
 import { Button } from "~/components/ui/button";
+import { Input } from "~/components/ui/input";
+import {
+  Backpack,
+  CalendarDays,
+  Check,
+  Dices,
+  Flag,
+  Music2,
+  ReceiptText,
+  ShoppingBasket,
+  Sparkles,
+  Trophy,
+  Vote,
+  type LucideIcon,
+} from "lucide-react";
+import {
+  GAMEPLAY_DASHBOARD_WIDGET_KEYS,
+  TRIP_MODULES,
+  type DashboardWidgetKey,
+  type GameplayDashboardWidgetKey,
+  type TripModuleKey,
+} from "~/lib/trip-config";
+import { cn } from "~/lib/utils";
 import type { TripFormData } from "./index";
 
 interface Props {
@@ -9,36 +32,185 @@ interface Props {
 }
 
 export function StepModules({ data, setData, onNext, onBack }: Props) {
-  const toggle = (key: keyof TripFormData["modules"]) => {
-    setData({ ...data, modules: { ...data.modules, [key]: !data.modules[key] } });
+  const icons: Record<TripModuleKey, LucideIcon> = {
+    schedule: CalendarDays,
+    shopping: ShoppingBasket,
+    scoreboard: Trophy,
+    finances: ReceiptText,
+    packing: Backpack,
+    quests: Sparkles,
+    playlist: Music2,
+  };
+
+  const gameplayOptions: Array<{
+    key: GameplayDashboardWidgetKey;
+    label: string;
+    description: string;
+    icon: LucideIcon;
+  }> = [
+    { key: "scoreboard", label: "Punktacja", description: "Drużyny i wyniki", icon: Trophy },
+    { key: "quests", label: "Wyzwania", description: "Zadania dla ekipy", icon: Flag },
+    { key: "polls", label: "Głosowania", description: "Wspólne decyzje", icon: Vote },
+    { key: "wheel", label: "Koło", description: "Losowanie osoby", icon: Dices },
+  ];
+
+  const toggle = (key: TripModuleKey) => {
+    const enabled = !data.modules[key];
+    const dashboardWidgets: DashboardWidgetKey[] =
+      key === "scoreboard"
+        ? enabled
+          ? data.dashboardWidgets.some((widget) =>
+              (GAMEPLAY_DASHBOARD_WIDGET_KEYS as readonly string[]).includes(widget),
+            )
+            ? data.dashboardWidgets
+            : [...data.dashboardWidgets, "scoreboard" as const]
+          : data.dashboardWidgets.filter(
+              (widget) => !(GAMEPLAY_DASHBOARD_WIDGET_KEYS as readonly string[]).includes(widget),
+            )
+        : enabled
+          ? data.dashboardWidgets.includes(key)
+            ? data.dashboardWidgets
+            : [...data.dashboardWidgets, key]
+          : data.dashboardWidgets.filter((widget) => widget !== key);
+
+    setData({
+      ...data,
+      modules: {
+        ...data.modules,
+        [key]: enabled,
+        ...(key === "scoreboard" ? { quests: enabled } : {}),
+      },
+      dashboardWidgets,
+      ...(key === "scoreboard" && !enabled ? { teams: [], memberAssignments: {} } : {}),
+    });
+  };
+
+  const toggleGameplay = (key: GameplayDashboardWidgetKey) => {
+    const active = data.dashboardWidgets.filter((widget): widget is GameplayDashboardWidgetKey =>
+      (GAMEPLAY_DASHBOARD_WIDGET_KEYS as readonly string[]).includes(widget),
+    );
+    const enabled = active.includes(key);
+    if (enabled && active.length === 1) return;
+
+    const dashboardWidgets = enabled
+      ? data.dashboardWidgets.filter((widget) => widget !== key)
+      : [...data.dashboardWidgets, key];
+
+    setData({
+      ...data,
+      dashboardWidgets,
+      modules: { ...data.modules, quests: dashboardWidgets.includes("quests") },
+      ...(key === "scoreboard" && enabled ? { teams: [], memberAssignments: {} } : {}),
+    });
   };
 
   return (
-    <>
-      <div className="mb-4 text-center">
-        <h2 className="font-heading text-2xl font-bold">Moduły</h2>
+    <div className="animate-fade-in flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <span className="text-theme-primary text-xs font-bold tracking-widest uppercase">
+          Zbuduj swój wyjazd
+        </span>
+        <h2 className="font-heading text-theme-text text-4xl leading-tight font-semibold">
+          Co będzie wam potrzebne?
+        </h2>
+        <p className="text-theme-muted text-sm">
+          Wszystko jest opcjonalne. Układ Bazy i dodatki dopasujesz już po utworzeniu wyjazdu.
+        </p>
       </div>
 
-      <div className="flex flex-col gap-3">
-        <Button
-          variant={data.modules.finances ? "default" : "outline"}
-          onClick={() => toggle("finances")}
-        >
-          💰 Finanse i Rozliczenia
-        </Button>
-        <Button
-          variant={data.modules.shopping ? "default" : "outline"}
-          onClick={() => toggle("shopping")}
-        >
-          🛒 Lista Zakupów
-        </Button>
-        <Button
-          variant={data.modules.scoreboard ? "default" : "outline"}
-          onClick={() => toggle("scoreboard")}
-        >
-          🏆 Drużyny i Scoreboard
-        </Button>
+      <div className="grid grid-cols-2 gap-3">
+        {TRIP_MODULES.filter((module) => module.key !== "quests").map((module) => {
+          const Icon = icons[module.key];
+          const enabled = data.modules[module.key];
+          return (
+            <button
+              key={module.key}
+              type="button"
+              onClick={() => toggle(module.key)}
+              className={cn(
+                "relative flex min-h-36 flex-col items-start gap-3 rounded-2xl border p-4 text-left transition-all active:scale-98",
+                enabled
+                  ? "border-theme-primary/50 bg-theme-primary/10"
+                  : "bg-theme-card/70 border-theme-border",
+              )}
+            >
+              <span
+                className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-xl",
+                  enabled
+                    ? "bg-theme-primary text-theme-primary-foreground"
+                    : "bg-theme-card-raised text-theme-muted",
+                )}
+              >
+                <Icon size={19} />
+              </span>
+              <span className="flex flex-col gap-1">
+                <strong className="text-theme-text text-sm">{module.name}</strong>
+                <span className="text-theme-muted text-xs leading-snug">{module.description}</span>
+              </span>
+              {enabled && (
+                <span className="bg-theme-primary text-theme-primary-foreground absolute top-3 right-3 flex h-5 w-5 items-center justify-center rounded-full">
+                  <Check size={13} strokeWidth={3} />
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
+
+      {data.modules.scoreboard && (
+        <div className="flex flex-col gap-3">
+          <div>
+            <h3 className="text-theme-text text-sm font-bold">Co ma być w Rozgrywce?</h3>
+            <p className="text-theme-muted mt-1 text-xs">
+              Drużyny są potrzebne tylko wtedy, gdy włączysz Punktację.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {gameplayOptions.map(({ key, label, description, icon: Icon }) => {
+              const enabled = data.dashboardWidgets.includes(key);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleGameplay(key)}
+                  className={cn(
+                    "flex min-h-20 items-center gap-3 rounded-xl border px-3 text-left transition",
+                    enabled
+                      ? "border-theme-primary/45 bg-theme-primary/10"
+                      : "border-theme-border bg-theme-card/55",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex size-9 shrink-0 items-center justify-center rounded-xl",
+                      enabled
+                        ? "bg-theme-primary text-theme-primary-foreground"
+                        : "text-theme-muted",
+                    )}
+                  >
+                    <Icon size={16} />
+                  </span>
+                  <span className="min-w-0">
+                    <strong className="text-theme-text block text-xs">{label}</strong>
+                    <span className="text-theme-muted mt-0.5 block text-[10px]">{description}</span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {data.modules.playlist && (
+        <Input
+          type="url"
+          label="Link do wspólnej playlisty"
+          value={data.playlistUrl}
+          onChange={(event) => setData({ ...data, playlistUrl: event.target.value })}
+          placeholder="YouTube Music, Spotify…"
+        />
+      )}
 
       <div className="mt-4 flex gap-3">
         <Button variant="outline" onClick={onBack} className="flex-1">
@@ -48,6 +220,6 @@ export function StepModules({ data, setData, onNext, onBack }: Props) {
           Dalej
         </Button>
       </div>
-    </>
+    </div>
   );
 }

@@ -1,33 +1,31 @@
 "use client";
 
 import { memo } from "react";
+import { formatFinanceAmount, type FinanceMode } from "~/lib/finances";
 
 interface ReceiptSummaryProps {
   totalCost: number;
-  totalSettled: number;
+  outstandingTotal: number;
+  financeMode: FinanceMode;
 }
 
 export const ReceiptSummary = memo(function ReceiptSummary({
   totalCost,
-  totalSettled,
+  outstandingTotal,
+  financeMode,
 }: ReceiptSummaryProps) {
   return (
-    <>
-      <div className="border-theme-border mt-3 flex flex-col gap-1.5 border-t border-dashed pt-4 text-[12px] uppercase">
-        <div className="text-theme-text/80 flex justify-between font-bold">
-          <span>Wydatki razem</span>
-          <span>{totalCost.toFixed(2)}</span>
-        </div>
-        <div className="text-theme-text/80 flex justify-between font-bold">
-          <span>Spłacono razem</span>
-          <span>{totalSettled.toFixed(2)}</span>
-        </div>
-
-        <div className="text-theme-text mt-2 flex justify-between text-[17px] font-bold tracking-wider">
-          <span>Suma PLN</span>
-          <span>{totalCost.toFixed(2)}</span>
-        </div>
+    <dl className="border-receipt-ink mt-4 border-y-2 py-3 uppercase">
+      <div className="flex items-end justify-between gap-3">
+        <dt className="text-receipt-ink text-sm font-black tracking-wider">Suma PLN</dt>
+        <dd className="text-receipt-ink text-base font-black">
+          {formatFinanceAmount(totalCost, financeMode)}
+        </dd>
       </div>
-    </>
+      <div className="text-receipt-muted mt-1.5 flex justify-between gap-3 text-[10px] font-semibold">
+        <dt>Pozostało między Wami</dt>
+        <dd>{formatFinanceAmount(outstandingTotal, financeMode)}</dd>
+      </div>
+    </dl>
   );
 });

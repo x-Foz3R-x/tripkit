@@ -53,7 +53,7 @@ export function StepTeams({ data, setData, onBack, onSubmit, isSubmitting }: Pro
       </form>
 
       {data.teams.length > 0 && (
-        <div className="mt-6 flex flex-col gap-4 border-t border-theme-border pt-4">
+        <div className="border-theme-border mt-6 flex flex-col gap-4 border-t pt-4">
           <span className="text-theme-muted text-xs font-bold tracking-widest uppercase">
             Przypisz graczy
           </span>
@@ -63,7 +63,7 @@ export function StepTeams({ data, setData, onBack, onSubmit, isSubmitting }: Pro
               <select
                 value={data.memberAssignments[user] || ""}
                 onChange={(e) => assignUser(user, e.target.value)}
-                className="bg-theme-bg text-theme-text rounded-md border border-theme-border px-2 py-1 text-xs outline-none"
+                className="bg-theme-bg text-theme-text border-theme-border rounded-md border px-2 py-1 text-xs outline-hidden"
               >
                 <option value="">Brak drużyny</option>
                 {data.teams.map((t) => (
@@ -82,7 +82,7 @@ export function StepTeams({ data, setData, onBack, onSubmit, isSubmitting }: Pro
           Wróć
         </Button>
         <Button onClick={onSubmit} disabled={isSubmitting} className="flex-1">
-          {isSubmitting ? "Zapis..." : "Zakończ"}
+          Dalej
         </Button>
       </div>
     </>

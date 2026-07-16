@@ -15,7 +15,7 @@ export default async function FinancesPage({ params }: { params: Promise<{ tripK
     supabase.from("users").select("id, name, phone").eq("trip_id", session.tripId).order("name"),
     supabase
       .from("expenses")
-      .select("*")
+      .select("*, expense_shares(user_id, amount)")
       .eq("trip_id", session.tripId)
       .order("created_at", { ascending: false }),
   ]);

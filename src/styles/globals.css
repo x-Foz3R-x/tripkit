@@ -5,6 +5,7 @@
   --font-heading: var(--font-heading), display;
   --font-body: var(--font-body), sans-serif;
   --font-mono: var(--font-mono), monospace;
+  --font-note: var(--font-note), cursive;
 
   /* Marka */
   --color-brand-bg: var(--brand-bg);
@@ -17,6 +18,13 @@
   --color-brand-accent-foreground: var(--brand-accent-foreground);
   --color-brand-text: var(--brand-text);
   --color-brand-muted: var(--brand-muted);
+
+  /* Materiały interfejsu */
+  --color-receipt-paper: var(--receipt-paper);
+  --color-receipt-ink: var(--receipt-ink);
+  --color-receipt-muted: var(--receipt-muted);
+  --color-receipt-line: var(--receipt-line);
+  --color-receipt-stamp: var(--receipt-stamp);
 
   /* Motyw wyjazdu */
   --color-theme-bg: var(--theme-bg);
@@ -83,6 +91,12 @@
     --brand-accent-foreground: #1a0f00;
     --brand-text: #fef9ea;
     --brand-muted: #b9aa91;
+
+    --receipt-paper: #e4d6ba;
+    --receipt-ink: #17120c;
+    --receipt-muted: #504738;
+    --receipt-line: #7c6f5a;
+    --receipt-stamp: #77351f;
 
     /* Kolory semantyczne niezależne od motywu */
     --semantic-success: #7ccea7;
@@ -161,6 +175,56 @@
 }
 
 @layer components {
+  .thermal-receipt {
+    position: relative;
+    background:
+      linear-gradient(rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.04)), var(--receipt-paper);
+    box-shadow:
+      0 28px 70px rgb(0 0 0 / 0.35),
+      0 2px 0 rgb(255 255 255 / 0.28) inset;
+  }
+
+  .thermal-receipt::before,
+  .thermal-receipt::after {
+    position: absolute;
+    left: 0;
+    z-index: 1;
+    width: 100%;
+    height: 10px;
+    content: "";
+    background:
+      linear-gradient(135deg, transparent 50%, var(--receipt-paper) 51%) 0 0 / 12px 12px repeat-x,
+      linear-gradient(45deg, var(--receipt-paper) 50%, transparent 51%) 6px 0 / 12px 12px repeat-x;
+  }
+
+  .thermal-receipt::before {
+    top: -9px;
+  }
+
+  .thermal-receipt::after {
+    bottom: -9px;
+    transform: rotate(180deg);
+  }
+
+  .shopping-notebook {
+    --theme-bg: #c7b794;
+    --theme-card: #e4d6ba;
+    --theme-card-raised: #d5c4a2;
+    --theme-border: #7c6f5a;
+    --theme-primary: #77351f;
+    --theme-primary-hover: #8a442c;
+    --theme-primary-active: #622b1b;
+    --theme-primary-foreground: #fff8e8;
+    --theme-text: #17120c;
+    --theme-muted: #504738;
+    --theme-danger: #9f2929;
+    background:
+      linear-gradient(rgb(255 255 255 / 0.04), rgb(255 255 255 / 0.04)), var(--theme-card);
+    box-shadow:
+      0 28px 70px rgb(0 0 0 / 0.3),
+      0 1px 0 rgb(255 255 255 / 0.25) inset;
+  }
+
   .brand-shell {
     --theme-bg: var(--brand-bg);
     --theme-card: var(--brand-surface);

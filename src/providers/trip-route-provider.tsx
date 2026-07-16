@@ -1,7 +1,8 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { TripModules } from "~/lib/server/trips";
+import type { FinanceMode, SettlementStrategy } from "~/lib/finances";
+import type { TripLayoutConfig, TripModules } from "~/lib/trip-config";
 
 export type TripRouteContextValue = {
   tripId: string;
@@ -9,8 +10,15 @@ export type TripRouteContextValue = {
   urlKey: string;
   userId: string | null;
   userName: string | null;
+  userAvatarUrl: string | null;
   isAdmin: boolean;
+  financeMode: FinanceMode;
+  settlementStrategy: SettlementStrategy;
   modules: TripModules;
+  layout: TripLayoutConfig;
+  playlistUrl: string | null;
+  playlists: Array<{ id: string; name: string; url: string; sort_order: number }>;
+  shareAccess: { inviteToken: string; joinPin: string } | null;
 };
 
 const TripRouteContext = createContext<TripRouteContextValue | null>(null);

@@ -3,9 +3,13 @@ import { env } from "~/env";
 import type { Database } from "~/types/database";
 
 export function createServerSupabaseClient() {
-  const key = env.SUPABASE_SECRET_KEY ?? env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!env.SUPABASE_SECRET_KEY) {
+    throw new Error(
+      "Brakuje SUPABASE_SECRET_KEY. Po włączeniu RLS dane są dostępne wyłącznie dla serwera.",
+    );
+  }
 
-  return createClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, key, {
+  return createClient<Database>(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SECRET_KEY, {
     auth: {
       autoRefreshToken: false,
       detectSessionInUrl: false,

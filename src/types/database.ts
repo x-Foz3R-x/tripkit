@@ -12,6 +12,7 @@ export type Database = {
         Row: {
           amount: number;
           created_at: string | null;
+          created_by: string | null;
           date: string | null;
           description: string;
           entry_type: string;
@@ -28,6 +29,7 @@ export type Database = {
         Insert: {
           amount: number;
           created_at?: string | null;
+          created_by?: string | null;
           date?: string | null;
           description: string;
           entry_type?: string;
@@ -44,6 +46,7 @@ export type Database = {
         Update: {
           amount?: number;
           created_at?: string | null;
+          created_by?: string | null;
           date?: string | null;
           description?: string;
           entry_type?: string;
@@ -58,6 +61,13 @@ export type Database = {
           user_id?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "expenses_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "expenses_payer_id_fkey";
             columns: ["user_id"];
@@ -88,9 +98,244 @@ export type Database = {
           },
         ];
       };
+      expense_shares: {
+        Row: {
+          amount: number;
+          created_at: string;
+          expense_id: string;
+          user_id: string;
+        };
+        Insert: {
+          amount: number;
+          created_at?: string;
+          expense_id: string;
+          user_id: string;
+        };
+        Update: {
+          amount?: number;
+          created_at?: string;
+          expense_id?: string;
+          user_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "expense_shares_expense_id_fkey";
+            columns: ["expense_id"];
+            isOneToOne: false;
+            referencedRelation: "expenses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "expense_shares_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      game_challenge_entries: {
+        Row: {
+          challenge_id: string;
+          claimed_at: string;
+          completed_by: string | null;
+          completed_at: string | null;
+          id: string;
+          status: string;
+          team_id: string | null;
+          user_id: string | null;
+        };
+        Insert: {
+          challenge_id: string;
+          claimed_at?: string;
+          completed_by?: string | null;
+          completed_at?: string | null;
+          id?: string;
+          status?: string;
+          team_id?: string | null;
+          user_id?: string | null;
+        };
+        Update: {
+          challenge_id?: string;
+          claimed_at?: string;
+          completed_by?: string | null;
+          completed_at?: string | null;
+          id?: string;
+          status?: string;
+          team_id?: string | null;
+          user_id?: string | null;
+        };
+        Relationships: [];
+      };
+      game_challenges: {
+        Row: {
+          audience: string;
+          created_at: string;
+          created_by: string | null;
+          description: string | null;
+          id: string;
+          is_active: boolean;
+          points: number;
+          title: string;
+          trip_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          audience?: string;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          id?: string;
+          is_active?: boolean;
+          points?: number;
+          title: string;
+          trip_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          audience?: string;
+          created_at?: string;
+          created_by?: string | null;
+          description?: string | null;
+          id?: string;
+          is_active?: boolean;
+          points?: number;
+          title?: string;
+          trip_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      poll_options: {
+        Row: {
+          id: string;
+          label: string;
+          poll_id: string;
+          sort_order: number;
+        };
+        Insert: {
+          id?: string;
+          label: string;
+          poll_id: string;
+          sort_order?: number;
+        };
+        Update: {
+          id?: string;
+          label?: string;
+          poll_id?: string;
+          sort_order?: number;
+        };
+        Relationships: [];
+      };
+      poll_votes: {
+        Row: {
+          created_at: string;
+          id: string;
+          option_id: string;
+          poll_id: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          option_id: string;
+          poll_id: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          option_id?: string;
+          poll_id?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
+      polls: {
+        Row: {
+          closes_on: string | null;
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          question: string;
+          status: string;
+          trip_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          closes_on?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          question: string;
+          status?: string;
+          trip_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          closes_on?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          question?: string;
+          status?: string;
+          trip_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      schedule_items: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          end_time: string | null;
+          event_date: string;
+          id: string;
+          location_address: string | null;
+          location_name: string | null;
+          notes: string | null;
+          start_time: string | null;
+          title: string;
+          trip_id: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          end_time?: string | null;
+          event_date: string;
+          id?: string;
+          location_address?: string | null;
+          location_name?: string | null;
+          notes?: string | null;
+          start_time?: string | null;
+          title: string;
+          trip_id: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          end_time?: string | null;
+          event_date?: string;
+          id?: string;
+          location_address?: string | null;
+          location_name?: string | null;
+          notes?: string | null;
+          start_time?: string | null;
+          title?: string;
+          trip_id?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       shopping_list: {
         Row: {
           added_by: string;
+          claimed_at: string | null;
+          claimed_by: string | null;
+          completed_at: string | null;
+          completed_by: string | null;
           created_at: string;
           for_users: string[];
           id: string;
@@ -101,6 +346,10 @@ export type Database = {
         };
         Insert: {
           added_by: string;
+          claimed_at?: string | null;
+          claimed_by?: string | null;
+          completed_at?: string | null;
+          completed_by?: string | null;
           created_at?: string;
           for_users?: string[];
           id?: string;
@@ -111,6 +360,10 @@ export type Database = {
         };
         Update: {
           added_by?: string;
+          claimed_at?: string | null;
+          claimed_by?: string | null;
+          completed_at?: string | null;
+          completed_by?: string | null;
           created_at?: string;
           for_users?: string[];
           id?: string;
@@ -177,12 +430,20 @@ export type Database = {
       trips: {
         Row: {
           created_at: string | null;
+          dashboard_widgets: Json;
+          destination_address: string | null;
+          destination_map_url: string | null;
+          destination_name: string | null;
           end_date: string | null;
+          finance_mode: string;
           id: string;
           invite_token: string;
           join_pin: string;
+          layout_config: Json;
           modules: Json | null;
           name: string;
+          playlist_url: string | null;
+          settlement_strategy: string;
           start_date: string | null;
           theme: string | null;
           updated_at: string | null;
@@ -190,12 +451,20 @@ export type Database = {
         };
         Insert: {
           created_at?: string | null;
+          dashboard_widgets?: Json;
+          destination_address?: string | null;
+          destination_map_url?: string | null;
+          destination_name?: string | null;
           end_date?: string | null;
+          finance_mode?: string;
           id?: string;
           invite_token?: string;
           join_pin?: string;
+          layout_config?: Json;
           modules?: Json | null;
           name: string;
+          playlist_url?: string | null;
+          settlement_strategy?: string;
           start_date?: string | null;
           theme?: string | null;
           updated_at?: string | null;
@@ -203,16 +472,57 @@ export type Database = {
         };
         Update: {
           created_at?: string | null;
+          dashboard_widgets?: Json;
+          destination_address?: string | null;
+          destination_map_url?: string | null;
+          destination_name?: string | null;
           end_date?: string | null;
+          finance_mode?: string;
           id?: string;
           invite_token?: string;
           join_pin?: string;
+          layout_config?: Json;
           modules?: Json | null;
           name?: string;
+          playlist_url?: string | null;
+          settlement_strategy?: string;
           start_date?: string | null;
           theme?: string | null;
           updated_at?: string | null;
           url_key?: string;
+        };
+        Relationships: [];
+      };
+      trip_playlists: {
+        Row: {
+          created_at: string;
+          created_by: string | null;
+          id: string;
+          name: string;
+          sort_order: number;
+          trip_id: string;
+          updated_at: string;
+          url: string;
+        };
+        Insert: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          name: string;
+          sort_order?: number;
+          trip_id: string;
+          updated_at?: string;
+          url: string;
+        };
+        Update: {
+          created_at?: string;
+          created_by?: string | null;
+          id?: string;
+          name?: string;
+          sort_order?: number;
+          trip_id?: string;
+          updated_at?: string;
+          url?: string;
         };
         Relationships: [];
       };
@@ -222,6 +532,7 @@ export type Database = {
           created_at: string | null;
           id: string;
           is_admin: boolean;
+          last_seen_at: string | null;
           name: string;
           phone: string | null;
           team_id: string | null;
@@ -234,6 +545,7 @@ export type Database = {
           created_at?: string | null;
           id?: string;
           is_admin?: boolean;
+          last_seen_at?: string | null;
           name: string;
           phone?: string | null;
           team_id?: string | null;
@@ -246,6 +558,7 @@ export type Database = {
           created_at?: string | null;
           id?: string;
           is_admin?: boolean;
+          last_seen_at?: string | null;
           name?: string;
           phone?: string | null;
           team_id?: string | null;
@@ -275,7 +588,26 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      create_expense_entry: {
+        Args: {
+          p_amount: number;
+          p_created_by: string;
+          p_description: string;
+          p_payer_id: string;
+          p_shares?: Json;
+          p_split_among: string[];
+          p_trip_id: string;
+        };
+        Returns: string;
+      };
+      complete_game_challenge: {
+        Args: {
+          p_completed_by: string;
+          p_entry_id: string;
+          p_trip_id: string;
+        };
+        Returns: Json;
+      };
     };
     Enums: {
       [_ in never]: never;

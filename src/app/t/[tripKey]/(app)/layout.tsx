@@ -22,7 +22,9 @@ export default async function ProtectedTripLayout({
 
   return (
     <>
-      {children}
+      <div className="min-h-dvh px-4 pt-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))]">
+        {children}
+      </div>
       <BottomNav />
     </>
   );

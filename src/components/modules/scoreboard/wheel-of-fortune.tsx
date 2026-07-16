@@ -1,8 +1,7 @@
-// src/components/modules/scoreboard/wheel-of-fortune.tsx
 "use client";
 
-import { memo, useState, useMemo } from "react";
-import { Dices, RefreshCw, Check } from "lucide-react";
+import { memo, useMemo, useState } from "react";
+import { Check, Dices, RefreshCw } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import type { Database } from "~/types/database";
 
@@ -38,7 +37,6 @@ export const WheelOfFortune = memo(function WheelOfFortune({ users }: WheelOfFor
   const [winner, setWinner] = useState<User | null>(null);
   const [excludedUserIds, setExcludedUserIds] = useState<string[]>([]);
 
-  // Filtrujemy tylko tych, którzy aktywnie biorą udział w losowaniu
   const activeUsers = useMemo(
     () => users.filter((u) => !excludedUserIds.includes(u.id)),
     [users, excludedUserIds],
@@ -89,14 +87,12 @@ export const WheelOfFortune = memo(function WheelOfFortune({ users }: WheelOfFor
     }, 4000);
   };
 
-  // Generowanie kolorów koła
   const gradientStops = activeUsers
     .map((user, i) => {
       let bgColor = user.color_hex;
 
       if (!bgColor) {
         let colorIndex = i;
-        // Zabezpieczenie przed łączeniem tego samego koloru przy nieparzystej liczbie
         if (numUsers % 2 !== 0 && i === numUsers - 1 && numUsers > 1) {
           colorIndex = i + 1;
         }
@@ -104,7 +100,6 @@ export const WheelOfFortune = memo(function WheelOfFortune({ users }: WheelOfFor
       }
 
       const startAngle = i * sliceAngle;
-      // Dodajemy +1deg do kąta końcowego, by ukryć białe artefakty wynikające z wygładzania krawędzi przeglądarki
       const endAngle = (i + 1) * sliceAngle + 1;
 
       return `${bgColor} ${startAngle}deg ${endAngle}deg`;
@@ -116,117 +111,115 @@ export const WheelOfFortune = memo(function WheelOfFortune({ users }: WheelOfFor
   if (users.length === 0) return null;
 
   return (
-    <div className="bg-theme-card border-theme-border flex flex-col items-center gap-6 rounded-2xl border p-6 shadow-sm">
-      <div className="text-theme-text flex items-center gap-2">
-        <Dices className="text-theme-accent" size={24} />
-        <h3 className="font-heading text-xl font-semibold">Koło Fortuny</h3>
-      </div>
-
-      <div className="relative mt-2 flex items-center justify-center">
-        {/* Wskaźnik (strzałka) na górze koła */}
-        <div className="absolute -top-4 z-10 flex flex-col items-center drop-shadow-md">
-          <div className="h-4 w-4 rotate-45 rounded-sm bg-white shadow-sm" />
+    <section className="flex flex-col gap-3">
+      <div className="flex items-end justify-between gap-3 px-1">
+        <div>
+          <p className="text-theme-accent text-[10px] font-bold tracking-[0.18em] uppercase">
+            Losowanie
+          </p>
+          <h2 className="font-heading text-theme-text text-2xl font-semibold">Koło fortuny</h2>
         </div>
-
-        {/* Główne koło */}
-        <div
-          className="border-theme-border relative h-64 w-64 overflow-hidden rounded-full border-4 shadow-xl transition-transform duration-4000 ease-[cubic-bezier(0.15,0.85,0.35,1)]"
-          style={{
-            transform: `rotate(${rotation}deg)`,
-            background: wheelBackground,
-          }}
-        >
-          {/* Napisy użytkowników */}
-          {activeUsers.map((user, i) => {
-            const labelRotation = i * sliceAngle + sliceAngle / 2;
-            return (
-              <div
-                key={user.id}
-                // Kontener tekstu zaczyna się na środku koła i sięga krawędzi (z przerwą pr-3, by tekst nie dotykał obwódki)
-                className="absolute top-1/2 left-1/2 flex h-8 w-29 origin-left -translate-y-1/2 items-center justify-end pr-3"
-                style={{ transform: `rotate(${labelRotation - 90}deg)` }}
-              >
-                <span className="text-theme-text truncate text-[11px] font-bold tracking-widest uppercase drop-shadow-md">
-                  {user.name}
-                </span>
-              </div>
-            );
-          })}
-        </div>
+        <span className="text-theme-muted text-[10px]">{numUsers} osób w puli</span>
       </div>
 
-      {/* Komunikat o wygranej */}
-      <div className="flex h-12 flex-col items-center justify-center">
-        {winner ? (
-          <div className="animate-fade-in flex flex-col items-center text-center">
-            <span className="text-theme-muted text-xs font-bold tracking-wider uppercase">
-              Wylosowano:
-            </span>
-            <span className="text-theme-primary font-heading text-2xl font-bold tracking-widest">
-              {winner.name}!
-            </span>
-          </div>
-        ) : (
-          <span className="text-theme-muted text-xs tracking-wider uppercase">
-            {isSpinning
-              ? "Losowanie..."
-              : numUsers === 0
-                ? "Brak osób do losowania"
-                : "Zakręć kołem, żeby wylosować ofiarę"}
-          </span>
-        )}
-      </div>
-
-      <Button
-        type="button"
-        variant="default"
-        onClick={handleSpin}
-        disabled={isSpinning || numUsers === 0}
-        className="w-full max-w-xs gap-2 font-bold tracking-wider uppercase shadow-lg"
-      >
-        <Dices size={18} />
-        {isSpinning ? "Kręci się..." : "Zakręć"}
-      </Button>
-
-      {/* --- PANEL STEROWANIA UCZESTNIKAMI --- */}
-      <div className="border-theme-border mt-2 flex w-full flex-col gap-3 border-t border-dashed pt-4">
-        <div className="flex items-center justify-between">
-          <span className="text-theme-muted text-[10px] font-bold tracking-wider uppercase">
-            Biorą udział ({numUsers})
-          </span>
-          <button
-            type="button"
-            onClick={handleReset}
-            disabled={isSpinning || excludedUserIds.length === 0}
-            className="text-theme-primary hover:text-theme-text flex items-center gap-1.5 text-[10px] font-bold tracking-wider uppercase transition disabled:opacity-30"
+      <div className="bg-theme-card/45 border-theme-border flex flex-col items-center rounded-3xl border px-4 py-5 shadow-xs">
+        <div className="relative flex items-center justify-center">
+          <div className="bg-theme-text absolute -top-2 z-10 size-4 rotate-45 rounded-xs shadow-md" />
+          <div
+            className="border-theme-card relative size-56 overflow-hidden rounded-full border-4 shadow-xl transition-transform duration-4000 ease-[cubic-bezier(0.15,0.85,0.35,1)]"
+            style={{
+              transform: `rotate(${rotation}deg)`,
+              background: wheelBackground,
+            }}
           >
-            <RefreshCw size={12} />
-            Resetuj
-          </button>
+            {activeUsers.map((user, i) => {
+              const labelRotation = i * sliceAngle + sliceAngle / 2;
+              return (
+                <div
+                  key={user.id}
+                  className="absolute top-1/2 left-1/2 flex h-7 w-25 origin-left -translate-y-1/2 items-center justify-end pr-2.5"
+                  style={{ transform: `rotate(${labelRotation - 90}deg)` }}
+                >
+                  <span className="truncate text-[9px] font-black tracking-wider text-white uppercase drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                    {user.name}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-1.5">
-          {users.map((user) => {
-            const isExcluded = excludedUserIds.includes(user.id);
-            return (
-              <button
-                key={user.id}
-                type="button"
-                onClick={() => handleToggleUser(user.id)}
-                disabled={isSpinning}
-                className={`flex items-center gap-1 rounded-md border px-2 py-1.5 text-[10px] font-bold uppercase transition-all ${
-                  isExcluded
-                    ? "bg-theme-bg text-theme-muted/40 border-theme-border line-through"
-                    : "border-theme-primary/30 bg-theme-primary/10 text-theme-primary"
-                }`}
-              >
-                {!isExcluded && <Check size={10} />}
-                {user.name}
-              </button>
-            );
-          })}
+        <div className="mt-4 flex min-h-12 flex-col items-center justify-center">
+          {winner ? (
+            <div className="animate-fade-in flex flex-col items-center text-center">
+              <span className="text-theme-muted text-[10px] font-bold tracking-wider uppercase">
+                Wylosowano
+              </span>
+              <span className="text-theme-primary font-heading text-2xl font-bold">
+                {winner.name}
+              </span>
+            </div>
+          ) : (
+            <span className="text-theme-muted text-center text-[10px] font-bold tracking-wider uppercase">
+              {isSpinning
+                ? "Losowanie..."
+                : numUsers === 0
+                  ? "Brak osób do losowania"
+                  : "Koło czeka na obrót"}
+            </span>
+          )}
+        </div>
+
+        <Button
+          type="button"
+          variant="default"
+          onClick={handleSpin}
+          disabled={isSpinning || numUsers === 0}
+          className="mt-2 w-full max-w-72 gap-2 font-bold tracking-wider uppercase"
+        >
+          <Dices size={18} />
+          {isSpinning ? "Kręci się..." : "Zakręć"}
+        </Button>
+
+        <div className="border-theme-border mt-5 flex w-full flex-col gap-3 border-t pt-4">
+          <div className="flex items-center justify-between">
+            <span className="text-theme-muted text-[10px] font-bold tracking-wider uppercase">
+              Kto bierze udział
+            </span>
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={isSpinning || excludedUserIds.length === 0}
+              className="text-theme-primary hover:text-theme-text flex items-center gap-1.5 text-[10px] font-bold tracking-wider uppercase transition disabled:opacity-30"
+            >
+              <RefreshCw size={12} />
+              Resetuj
+            </button>
+          </div>
+
+          <div className="-mx-1 flex max-w-full gap-1.5 overflow-x-auto px-1 pb-1">
+            {users.map((user) => {
+              const isExcluded = excludedUserIds.includes(user.id);
+              return (
+                <button
+                  key={user.id}
+                  type="button"
+                  onClick={() => handleToggleUser(user.id)}
+                  disabled={isSpinning}
+                  className={`flex min-h-9 shrink-0 items-center gap-1 rounded-full border px-3 text-[10px] font-bold transition-all ${
+                    isExcluded
+                      ? "bg-theme-bg text-theme-muted/50 border-theme-border line-through"
+                      : "border-theme-primary/30 bg-theme-primary/10 text-theme-primary"
+                  }`}
+                >
+                  {!isExcluded && <Check size={10} />}
+                  {user.name}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 });

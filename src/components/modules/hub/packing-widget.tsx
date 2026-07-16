@@ -5,7 +5,7 @@ import { Backpack, ChevronRight } from "lucide-react";
 import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Skeleton } from "~/components/ui/skeleton";
-import { getAppStorageItem, setAppStorageItem } from "~/lib/storage";
+import { getAppStorageItem, removeAppStorageItem, setAppStorageItem } from "~/lib/storage";
 import { useTripRoute } from "~/providers/trip-route-provider";
 
 const PACKING_LIST = [
@@ -37,11 +37,14 @@ export function PackingWidget() {
 
   useEffect(() => {
     if (userId) {
-      const storageKey = `packing_${tripId}_${userId}`;
-      const savedData = getAppStorageItem(storageKey);
+      const storageKey = `packing-list_${tripId}_${userId}`;
+      const legacyStorageKey = `packing_${tripId}_${userId}`;
+      const savedData = getAppStorageItem(storageKey) ?? getAppStorageItem(legacyStorageKey);
       if (savedData) {
         try {
           setCheckedItems(JSON.parse(savedData) as Record<string, boolean>);
+          setAppStorageItem(storageKey, savedData);
+          removeAppStorageItem(legacyStorageKey);
         } catch (e) {
           console.error(e);
         }
@@ -54,7 +57,7 @@ export function PackingWidget() {
     if (!userId) return;
     const newCheckedItems = { ...checkedItems, [item]: isChecked };
     setCheckedItems(newCheckedItems);
-    const storageKey = `packing_${tripId}_${userId}`;
+    const storageKey = `packing-list_${tripId}_${userId}`;
     setAppStorageItem(storageKey, JSON.stringify(newCheckedItems));
   };
 
@@ -68,20 +71,20 @@ export function PackingWidget() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="border-theme-primary/20 bg-theme-primary/5 hover:bg-theme-primary/10 flex flex-col gap-3 rounded-2xl border p-5 text-left shadow-sm transition-colors active:scale-[0.98]"
+        className="bg-theme-card border-theme-border flex min-h-28 w-full flex-col justify-between gap-4 rounded-2xl border p-4 text-left transition active:scale-99"
       >
         <div className="flex w-full items-center justify-between">
           <div className="text-theme-primary flex items-center gap-2">
             <Backpack size={18} />
-            <span className="font-body text-sm font-bold tracking-wider uppercase">
-              Twój Ekwipunek
+            <span className="text-[10px] font-bold tracking-[0.14em] uppercase">
+              Twój ekwipunek
             </span>
           </div>
           <ChevronRight size={18} className="text-theme-muted" />
         </div>
 
         <div className="flex w-full items-center justify-between gap-4">
-          <div className="bg-theme-bg/50 h-2 flex-1 overflow-hidden rounded-full">
+          <div className="bg-theme-bg/70 h-2 flex-1 overflow-hidden rounded-full">
             <div
               className="from-theme-primary to-theme-accent h-full rounded-full bg-linear-to-r transition-all duration-500 ease-out"
               style={{ width: `${progressPercent}%` }}
@@ -91,6 +94,9 @@ export function PackingWidget() {
             {progressPercent}%
           </span>
         </div>
+        <p className="text-theme-muted text-xs">
+          Spakowano {checkedCount} z {totalItems} rzeczy
+        </p>
       </button>
 
       <ResponsiveDialog isOpen={isOpen} setIsOpen={setIsOpen}>

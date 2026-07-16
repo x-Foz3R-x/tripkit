@@ -27,7 +27,7 @@ export function TeamsChart({ teams }: TeamsChartProps) {
   } satisfies ChartConfig;
 
   return (
-    <div className="bg-theme-card border-theme-border rounded-2xl border p-4 shadow-sm">
+    <div className="bg-theme-card border-theme-border rounded-2xl border p-4 shadow-xs">
       <ChartContainer config={chartConfig} className="min-h-62.5 w-full">
         <BarChart
           accessibilityLayer

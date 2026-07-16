@@ -1,10 +1,11 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { ArrowLeft, ArrowRight, KeyRound, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowRight, KeyRound } from "lucide-react";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { verifyParticipantAction, type TripFormState } from "~/app/actions/trips";
 import { Button } from "~/components/ui/button";
+import { Avatar } from "~/components/ui/avatar";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "~/components/ui/input-otp";
 
 export type ParticipantOption = {
@@ -138,9 +139,14 @@ export function ParticipantPicker({
               onClick={() => setSelected(participant)}
               className="bg-theme-card border-theme-border hover:border-theme-primary/50 hover:bg-theme-primary/10 flex items-center gap-3 rounded-xl border p-3 text-left transition active:scale-95"
             >
-              <div className="text-theme-muted bg-theme-text/5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full">
-                <UserRound size={18} />
-              </div>
+              <Avatar
+                user={{
+                  id: participant.id,
+                  name: participant.name,
+                  avatarUrl: participant.avatarUrl,
+                }}
+                className="h-10 w-10 text-base"
+              />
               <div className="min-w-0">
                 <span className="text-theme-text block truncate text-sm font-bold">
                   {participant.name}

@@ -15,7 +15,7 @@ export function Checkbox({ id, checked, onChange, label }: CheckboxProps) {
   return (
     <label
       htmlFor={id}
-      className="group flex cursor-pointer items-start gap-3 py-2 transition-all active:scale-[0.98]"
+      className="group flex cursor-pointer items-start gap-3 py-2 transition-all active:scale-98"
     >
       <div className="relative mt-0.5 flex shrink-0 items-center justify-center">
         <input

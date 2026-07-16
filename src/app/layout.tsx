@@ -1,6 +1,11 @@
 import "~/styles/globals.css";
 import { type Metadata } from "next";
-import { Bricolage_Grotesque, Nunito_Sans, Inconsolata } from "next/font/google";
+import {
+  Architects_Daughter,
+  Bricolage_Grotesque,
+  Inconsolata,
+  Nunito_Sans,
+} from "next/font/google";
 import type { Viewport } from "next";
 
 const fontHeading = Bricolage_Grotesque({
@@ -16,6 +21,12 @@ const fontBody = Nunito_Sans({
 const fontMono = Inconsolata({
   subsets: ["latin", "latin-ext"],
   variable: "--font-mono",
+});
+
+const fontNote = Architects_Daughter({
+  subsets: ["latin", "latin-ext"],
+  weight: "400",
+  variable: "--font-note",
 });
 
 export const metadata: Metadata = {
@@ -38,7 +49,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html
       lang="pl"
-      className={`${fontHeading.variable} ${fontBody.variable} ${fontMono.variable} dark`}
+      className={`${fontHeading.variable} ${fontBody.variable} ${fontMono.variable} ${fontNote.variable} dark`}
     >
       <body className="bg-theme-bg font-body text-theme-text selection:bg-theme-primary/30 relative min-h-dvh overflow-x-hidden antialiased">
         <div className="pointer-events-none fixed inset-0 -z-10">
@@ -49,7 +60,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <div className="via-theme-bg/50 to-theme-bg absolute inset-0 bg-linear-to-b from-transparent" />
         </div>
 
-        <main className="relative z-10 mx-auto min-h-dvh max-w-md px-4 pt-4 pb-24">{children}</main>
+        <main className="relative z-10 mx-auto min-h-dvh max-w-md">{children}</main>
       </body>
     </html>
   );

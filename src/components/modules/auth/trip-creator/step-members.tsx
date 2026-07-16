@@ -66,7 +66,7 @@ export function StepMembers({ data, setData, onNext, onBack, isSubmitting }: Pro
           Wróć
         </Button>
         <Button onClick={onNext} disabled={isSubmitting} className="flex-1">
-          {data.modules.scoreboard ? "Dalej (Drużyny)" : isSubmitting ? "Zapis..." : "Zakończ"}
+          {data.modules.scoreboard ? "Dalej: drużyny" : "Dalej"}
         </Button>
       </div>
     </>

@@ -30,7 +30,7 @@ const PACKING_LIST = [
 ];
 
 export default function PackingPage() {
-  const { tripId, userId } = useTripRoute();
+  const { tripId, userId, userName } = useTripRoute();
   const [mounted, setMounted] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const storageKey = `packing-list_${tripId}_${userId ?? "anonymous"}`;
@@ -70,25 +70,28 @@ export default function PackingPage() {
 
   return (
     <div className="animate-fade-in flex flex-col gap-6">
-      <header className="flex flex-col gap-3 pt-4 pb-2">
-        <div className="flex items-center justify-between pb-2">
-          <div className="flex flex-col gap-1">
-            <h1 className="font-heading text-theme-text text-5xl font-semibold">Pakowanie</h1>
+      <header className="mt-3 px-1 pt-1">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-theme-primary text-[10px] font-bold tracking-[0.18em] uppercase">
+              Zawieszka bagażowa
+            </p>
+            <h1 className="font-heading text-theme-text mt-1 text-3xl font-semibold">
+              {userName ? `${userName}, gotowe?` : "Gotowe do drogi?"}
+            </h1>
           </div>
-
           <Button
             onClick={handleClear}
             variant="secondary"
             size="icon"
             className="text-theme-muted active:scale-95"
-            aria-label="Dodaj nowy wydatek"
+            aria-label="Wyczyść listę pakowania"
           >
             <Trash2 size={20} />
           </Button>
         </div>
 
-        {/* --- PASEK POSTĘPU --- */}
-        <div className="border-theme-primary/20 bg-theme-primary/5 mt-2 flex flex-col gap-2 rounded-2xl border p-4">
+        <div className="mt-5 flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <div className="text-theme-primary flex items-center gap-2">
               <Backpack size={16} />
@@ -98,7 +101,7 @@ export default function PackingPage() {
             </div>
             <span className="text-theme-text font-mono font-bold">{progressPercent}%</span>
           </div>
-          <div className="bg-theme-bg/50 h-2.5 w-full overflow-hidden rounded-full">
+          <div className="bg-theme-bg/70 h-2.5 w-full overflow-hidden rounded-full">
             <div
               className="from-theme-primary to-theme-accent h-full rounded-full bg-linear-to-r transition-all duration-500 ease-out"
               style={{ width: `${progressPercent}%` }}
@@ -120,7 +123,7 @@ export default function PackingPage() {
             <div
               key={category.category}
               className={`bg-theme-card flex flex-col gap-2 rounded-2xl border p-5 transition-all duration-300 ${
-                isCatDone ? "border-theme-success/25 opacity-60" : "border-theme-border shadow-sm"
+                isCatDone ? "border-theme-success/25 opacity-60" : "border-theme-border shadow-xs"
               }`}
             >
               <h2 className="font-body text-theme-text mb-1 text-lg font-bold">

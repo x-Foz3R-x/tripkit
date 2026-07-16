@@ -2,7 +2,13 @@
 
 import { memo, useMemo } from "react";
 import type { Database } from "~/types/database";
-import { isSettlementEntry, type FinanceExpense, type Transaction } from "~/lib/finances";
+import {
+  isSettlementEntry,
+  type FinanceExpense,
+  type FinanceMode,
+  type SettlementStrategy,
+  type Transaction,
+} from "~/lib/finances";
 import { ReceiptHeader } from "~/components/modules/finances/receipt-header";
 import { ReceiptExpenseList } from "~/components/modules/finances/receipt-expense-list";
 import { ReceiptSummary } from "~/components/modules/finances/receipt-summary";
@@ -21,6 +27,10 @@ interface ExpenseReceiptProps {
   balance: number;
   debts: Transaction[];
   receivables: Transaction[];
+  financeMode: FinanceMode;
+  settlementStrategy: SettlementStrategy;
+  relationalTransactions: Transaction[];
+  optimizedTransactions: Transaction[];
   onDataChanged: () => void;
   onAddExpense: () => void;
 }
@@ -32,6 +42,10 @@ export const ExpenseReceipt = memo(function ExpenseReceipt({
   balance,
   debts,
   receivables,
+  financeMode,
+  settlementStrategy,
+  relationalTransactions,
+  optimizedTransactions,
   onDataChanged,
   onAddExpense,
 }: ExpenseReceiptProps) {
@@ -40,60 +54,62 @@ export const ExpenseReceipt = memo(function ExpenseReceipt({
     () => expenses.filter((expense) => !isSettlementEntry(expense)),
     [expenses],
   );
-
   const settlements = useMemo(() => expenses.filter(isSettlementEntry), [expenses]);
-
   const totalCost = useMemo(
     () => regularExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0),
     [regularExpenses],
   );
-
-  const totalSettled = useMemo(
-    () => settlements.reduce((sum, expense) => sum + Number(expense.amount), 0),
-    [settlements],
+  const outstandingTotal = useMemo(
+    () =>
+      (settlementStrategy === "optimized" ? optimizedTransactions : relationalTransactions).reduce(
+        (sum, transaction) => sum + transaction.amount,
+        0,
+      ),
+    [optimizedTransactions, relationalTransactions, settlementStrategy],
   );
-
-  // DODAŁEM: Szukamy imienia aktywnego użytkownika
-  const activeUserName = useMemo(
-    () => users.find((u) => u.id === activeUserId)?.name ?? "Nieznany",
-    [users, activeUserId],
-  );
-
-  const tripIdShort = tripId.split("-")[0]?.toUpperCase() ?? "01103";
-
-  const issuedAt = new Date().toLocaleString("pl-PL", {
+  const activeUserName = users.find((user) => user.id === activeUserId)?.name ?? "Uczestnik";
+  const tripIdShort = tripId.split("-")[0]?.toUpperCase() ?? "00000000";
+  const issuedAt = new Date().toLocaleDateString("pl-PL", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
+  const isEmpty = expenses.length === 0;
 
   return (
-    <div className="from-theme-primary/10 selection:bg-theme-primary/30 border-theme-border text-theme-text/90 mx-auto w-full max-w-sm rounded-2xl border bg-linear-to-b to-transparent p-6 font-mono shadow-2xl">
-      {/* DODAŁEM: activeUserName */}
+    <section className="thermal-receipt text-receipt-ink -mx-2 mt-4 w-auto max-w-none px-5 py-7 font-mono">
       <ReceiptHeader
         tripIdShort={tripIdShort}
         issuedAt={issuedAt}
         activeUserName={activeUserName}
+        financeMode={financeMode}
+        isEmpty={isEmpty}
         onAddExpense={onAddExpense}
       />
-
-      <ReceiptExpenseList expenses={regularExpenses} users={users} />
-
-      <ReceiptSummary totalSettled={totalSettled} totalCost={totalCost} />
-
-      <ReceiptPaymentSection
-        settlements={settlements}
-        users={users}
-        activeUserId={activeUserId}
-        balance={balance}
-        debts={debts}
-        receivables={receivables}
-        onDataChanged={onDataChanged}
+      <ReceiptExpenseList expenses={regularExpenses} users={users} financeMode={financeMode} />
+      <ReceiptSummary
+        outstandingTotal={outstandingTotal}
+        totalCost={totalCost}
+        financeMode={financeMode}
       />
-
-      <ReceiptFooter tripIdShort={tripIdShort} />
-    </div>
+      {!isEmpty && (
+        <>
+          <ReceiptPaymentSection
+            settlements={settlements}
+            users={users}
+            activeUserId={activeUserId}
+            balance={balance}
+            debts={debts}
+            receivables={receivables}
+            financeMode={financeMode}
+            settlementStrategy={settlementStrategy}
+            relationalTransactions={relationalTransactions}
+            optimizedTransactions={optimizedTransactions}
+            onDataChanged={onDataChanged}
+          />
+          <ReceiptFooter tripIdShort={tripIdShort} />
+        </>
+      )}
+    </section>
   );
 });

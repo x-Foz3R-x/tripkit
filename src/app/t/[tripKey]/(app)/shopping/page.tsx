@@ -12,12 +12,12 @@ export default async function ShoppingPage({ params }: { params: Promise<{ tripK
   const supabase = createServerSupabaseClient();
   const [trip, usersResult, shoppingResult] = await Promise.all([
     getTripByUrlKey(tripKey),
-    supabase.from("users").select("id, name").eq("trip_id", session.tripId).order("name"),
     supabase
-      .from("shopping_list")
-      .select("*")
+      .from("users")
+      .select("id, name, avatar_url")
       .eq("trip_id", session.tripId)
-      .order("created_at", { ascending: false }),
+      .order("name"),
+    supabase.from("shopping_list").select("*").eq("trip_id", session.tripId).order("created_at"),
   ]);
 
   if (!trip) notFound();

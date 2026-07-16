@@ -1,20 +1,22 @@
 "use client";
 
-import { memo, useEffect, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Check, HelpCircle, X } from "lucide-react";
-import { supabase } from "~/lib/supabase";
+import { memo, useState } from "react";
+import { ArrowDownLeft, ArrowUpRight, Check, ChevronDown, Copy, HelpCircle } from "lucide-react";
 import type { Database } from "~/types/database";
-import { getAppStorageItem, setAppStorageItem } from "~/lib/storage";
 import {
+  formatFinanceAmount,
   getSettlementRecipientId,
   getSettlementStatus,
   type FinanceExpense,
+  type FinanceMode,
   type SettlementStatus,
+  type SettlementStrategy,
   type Transaction,
 } from "~/lib/finances";
 import { useTripRoute } from "~/providers/trip-route-provider";
+import { decideSettlementAction, reportSettlementAction } from "~/app/actions/finances";
+import { ResponsiveDialog } from "~/components/responsive-dialog";
 
-// Zaktualizowany typ o 'phone'
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name"> & {
   phone?: string | null;
 };
@@ -26,11 +28,12 @@ interface ReceiptPaymentSectionProps {
   balance: number;
   debts: Transaction[];
   receivables: Transaction[];
+  financeMode: FinanceMode;
+  settlementStrategy: SettlementStrategy;
+  relationalTransactions: Transaction[];
+  optimizedTransactions: Transaction[];
   onDataChanged: () => void;
 }
-
-const INITIAL_VISIBLE_SETTLEMENTS = 3;
-const HELP_DISMISSED_KEY = "settlement_help_dismissed";
 
 export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
   settlements,
@@ -39,40 +42,33 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
   balance,
   debts,
   receivables,
+  financeMode,
+  settlementStrategy,
+  relationalTransactions,
+  optimizedTransactions,
   onDataChanged,
 }: ReceiptPaymentSectionProps) {
-  const { tripId } = useTripRoute();
-  const [confirmingDebtTo, setConfirmingDebtTo] = useState<string | null>(null);
+  const { urlKey } = useTripRoute();
+  const [selectedDebt, setSelectedDebt] = useState<Transaction | null>(null);
+  const [isStrategyOpen, setIsStrategyOpen] = useState(false);
+  const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
   const [processingKey, setProcessingKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [isLedgerExpanded, setIsLedgerExpanded] = useState(false);
-  const [isHelpVisible, setIsHelpVisible] = useState(true);
 
-  useEffect(() => {
-    if (getAppStorageItem(HELP_DISMISSED_KEY) === "true") {
-      setIsHelpVisible(false);
-    }
-  }, []);
-
-  const dismissHelp = () => {
-    setAppStorageItem(HELP_DISMISSED_KEY, "true");
-    setIsHelpVisible(false);
-  };
-
-  const getUserName = (userId: string) =>
-    users.find((user) => user.id === userId)?.name ?? "Nieznany";
+  const getUser = (userId: string) => users.find((user) => user.id === userId);
+  const getUserName = (userId: string) => getUser(userId)?.name ?? "Nieznany";
+  const money = (value: number, currency = false) =>
+    formatFinanceAmount(value, financeMode, { currency });
 
   const pendingIncoming = settlements.filter(
     (settlement) =>
       getSettlementStatus(settlement) === "pending" &&
       getSettlementRecipientId(settlement) === activeUserId,
   );
-
   const pendingOutgoing = settlements.filter(
     (settlement) =>
       getSettlementStatus(settlement) === "pending" && settlement.user_id === activeUserId,
   );
-
   const isFullySettled =
     debts.length === 0 &&
     receivables.length === 0 &&
@@ -81,47 +77,38 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
 
   const findPendingToRecipient = (recipientId: string) =>
     pendingOutgoing.find((settlement) => getSettlementRecipientId(settlement) === recipientId);
-
   const pendingAmountFromDebtor = (debtorId: string) =>
     pendingIncoming
       .filter((settlement) => settlement.user_id === debtorId)
       .reduce((sum, settlement) => sum + Number(settlement.amount), 0);
 
-  const hasMoreSettlements = settlements.length > INITIAL_VISIBLE_SETTLEMENTS;
-  const visibleSettlements =
-    isLedgerExpanded || !hasMoreSettlements
-      ? settlements
-      : settlements.slice(0, INITIAL_VISIBLE_SETTLEMENTS);
-  const hiddenSettlementsCount = settlements.length - INITIAL_VISIBLE_SETTLEMENTS;
+  const handleCopyPhone = async (phone: string) => {
+    try {
+      await navigator.clipboard.writeText(phone.replace(/\s/g, ""));
+      setCopiedPhone(phone);
+      window.setTimeout(() => setCopiedPhone(null), 1800);
+    } catch {
+      setActionError("Nie udało się skopiować numeru. Przytrzymaj go, aby zaznaczyć ręcznie.");
+    }
+  };
 
   const handleReportPayment = async (recipientId: string, amount: number) => {
     const processingId = `report:${recipientId}`;
-
     setActionError(null);
     setProcessingKey(processingId);
-
-    const { error } = await supabase.from("expenses").insert({
-      trip_id: tripId,
-      user_id: activeUserId,
+    const result = await reportSettlementAction({
+      tripKey: urlKey,
+      recipientId,
       amount,
-      description: "Zgłoszona wpłata",
-      split_among: [recipientId],
-      entry_type: "settlement",
-      settlement_status: "pending",
-      settlement_recipient_id: recipientId,
-      settlement_confirmed_at: null,
-      settlement_confirmed_by: null,
-    } as never);
-
+    });
     setProcessingKey(null);
-    setConfirmingDebtTo(null);
 
-    if (error) {
-      console.error("Błąd zgłoszenia wpłaty:", error);
-      setActionError("Nie udało się zgłosić wpłaty. Spróbuj ponownie.");
+    if (!result.ok) {
+      setActionError(result.error);
       return;
     }
 
+    setSelectedDebt(null);
     onDataChanged();
   };
 
@@ -130,384 +117,354 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
     status: Extract<SettlementStatus, "confirmed" | "rejected">,
   ) => {
     const processingId = `${status}:${settlementId}`;
-
     setActionError(null);
     setProcessingKey(processingId);
-
-    const updateData =
-      status === "confirmed"
-        ? {
-            settlement_status: "confirmed",
-            settlement_confirmed_at: new Date().toISOString(),
-            settlement_confirmed_by: activeUserId,
-          }
-        : {
-            settlement_status: "rejected",
-            settlement_confirmed_at: null,
-            settlement_confirmed_by: null,
-          };
-
-    const { error } = await supabase
-      .from("expenses")
-      .update(updateData as never)
-      .eq("id", settlementId);
-
+    const result = await decideSettlementAction({
+      tripKey: urlKey,
+      settlementId,
+      status,
+    });
     setProcessingKey(null);
 
-    if (error) {
-      console.error("Błąd zapisu potwierdzenia:", error);
-      setActionError("Nie udało się zapisać decyzji. Spróbuj ponownie.");
+    if (!result.ok) {
+      setActionError(result.error);
       return;
     }
-
     onDataChanged();
   };
 
+  const selectedCreditor = selectedDebt ? getUser(selectedDebt.to) : null;
+  const selectedPhone = selectedCreditor?.phone ?? null;
+
   return (
-    <div className="border-theme-border mt-5 flex flex-col gap-3 border-t border-dashed pt-4">
-      <div className="flex items-center justify-between">
-        <span className="text-theme-muted/80 text-[12px] font-bold tracking-widest uppercase">
-          Rozliczenie płatności
-        </span>
-
-        <button
-          type="button"
-          onClick={() => setIsHelpVisible((previous) => !previous)}
-          aria-label="Jak działa rozliczanie?"
-          className="text-theme-muted/60 hover:text-theme-primary -m-2 flex h-8 w-8 items-center justify-center rounded-full transition-colors"
-        >
-          <HelpCircle size={16} />
-        </button>
-      </div>
-
-      {isHelpVisible && (
-        <div className="border-theme-muted/25 bg-theme-text/3 flex flex-col gap-1.5 rounded-lg border border-dashed px-3 py-3 text-[11px] normal-case">
-          <div className="flex items-start justify-between gap-2">
-            <span className="text-theme-muted/80 text-[10px] font-bold tracking-wider uppercase">
-              Jak to działa
-            </span>
-
+    <>
+      <section className="mt-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-receipt-ink text-[10px] font-black tracking-[0.14em] uppercase">
+            Do rozliczenia
+          </h2>
+          {settlementStrategy === "optimized" && (
             <button
               type="button"
-              onClick={dismissHelp}
-              aria-label="Zwiń instrukcję"
-              className="text-theme-muted/50 hover:text-theme-text -m-1.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full"
+              onClick={() => setIsStrategyOpen(true)}
+              className="text-receipt-muted hover:text-receipt-ink flex min-h-11 items-center gap-1.5 text-[10px] font-bold"
             >
-              <X size={13} />
-            </button>
-          </div>
-
-          <ol className="text-theme-muted/75 flex list-decimal flex-col gap-1 pl-4 leading-snug">
-            <li>
-              Wysłałeś komuś przelew? Wejdź w &quot;Musisz oddać&quot; i kliknij{" "}
-              <span className="text-theme-accent font-bold">zgłoś przelew</span>.
-            </li>
-            <li>Odbiorca zobaczy Twoje zgłoszenie i potwierdzi, że pieniądze doszły.</li>
-            <li>Dopiero po potwierdzeniu Twój bilans się zaktualizuje.</li>
-          </ol>
-        </div>
-      )}
-
-      {actionError && (
-        <div className="border-theme-primary/30 bg-theme-primary/5 text-theme-primary rounded-lg border border-dashed px-3 py-2 text-[11px]">
-          {actionError}
-        </div>
-      )}
-
-      {settlements.length > 0 && (
-        <div className="border-theme-border flex flex-col gap-2 border-b border-dashed pb-3">
-          <span className="text-theme-muted/60 text-[10px] font-bold tracking-wider uppercase">
-            Rejestr wpłat
-          </span>
-
-          {visibleSettlements.map((settlement) => {
-            const recipientId = getSettlementRecipientId(settlement);
-            const debtor = getUserName(settlement.user_id);
-            const recipient = getUserName(recipientId ?? "");
-            const status = getSettlementStatus(settlement);
-
-            const statusLabel =
-              status === "pending"
-                ? "oczekuje"
-                : status === "confirmed"
-                  ? "potwierdzono"
-                  : "odrzucono";
-
-            const statusClass =
-              status === "confirmed"
-                ? "text-theme-accent"
-                : status === "pending"
-                  ? "text-theme-primary"
-                  : "text-theme-muted";
-
-            return (
-              <div
-                key={settlement.id}
-                className="flex items-center justify-between gap-3 text-[11px] uppercase"
-              >
-                <span className="text-theme-text/70">
-                  {debtor} → {recipient}
-                </span>
-
-                <span className={`${statusClass} shrink-0 font-bold`}>
-                  {Number(settlement.amount).toFixed(2)} · {statusLabel}
-                </span>
-              </div>
-            );
-          })}
-
-          {hasMoreSettlements && (
-            <button
-              type="button"
-              onClick={() => setIsLedgerExpanded((previous) => !previous)}
-              className="text-theme-primary border-theme-primary/25 hover:bg-theme-primary/5 mt-1 rounded-md border border-dashed px-3 py-2 text-[11px] font-bold tracking-widest uppercase transition active:scale-[0.99]"
-            >
-              {isLedgerExpanded
-                ? "Zwiń do 3 najnowszych"
-                : `Pokaż więcej (${hiddenSettlementsCount})`}
+              Uproszczone przelewy
+              <HelpCircle size={16} />
             </button>
           )}
         </div>
-      )}
 
-      {isFullySettled ? (
-        <div className="border-theme-accent/30 bg-theme-accent/5 flex items-center justify-between rounded-lg border border-dashed px-3 py-2.5">
-          <span className="text-theme-accent font-body text-[13px] font-bold uppercase">
-            Wszystko rozliczone
-          </span>
+        {actionError && (
+          <p className="border-theme-danger/30 bg-theme-danger/8 text-theme-danger mt-2 rounded-xl border px-3 py-2 text-xs">
+            {actionError}
+          </p>
+        )}
 
-          <Check size={16} className="text-theme-accent" />
-        </div>
-      ) : (
-        <div className="flex flex-col gap-4 text-[13px] uppercase">
-          {pendingIncoming.length > 0 && (
-            <div className="border-theme-primary/25 bg-theme-primary/5 flex flex-col gap-2.5 rounded-lg border border-dashed p-3">
-              <span className="text-theme-primary text-[11px] font-bold tracking-wider">
-                Do potwierdzenia
-              </span>
-
+        {pendingIncoming.length > 0 && (
+          <div className="border-receipt-line mt-3 border-y border-dashed py-3">
+            <p className="text-receipt-stamp text-[10px] font-black tracking-widest uppercase">
+              Potwierdź otrzymanie
+            </p>
+            <div className="divide-receipt-line mt-2 divide-y divide-dashed">
               {pendingIncoming.map((settlement) => {
-                const debtor = getUserName(settlement.user_id);
                 const isConfirming = processingKey === `confirmed:${settlement.id}`;
                 const isRejecting = processingKey === `rejected:${settlement.id}`;
 
                 return (
-                  <div
-                    key={settlement.id}
-                    className="border-theme-border flex flex-col gap-2 border-t border-dashed pt-2.5 first:border-0 first:pt-0"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-theme-text/90 flex items-center gap-1.5">
-                        <ArrowDownLeft size={14} className="text-theme-accent shrink-0" />
-                        {debtor}
+                  <div key={settlement.id} className="py-3 first:pt-1 last:pb-0">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-receipt-ink text-xs font-bold">
+                        {getUserName(settlement.user_id)}
                       </span>
-
-                      <span className="text-theme-accent font-bold">
-                        {Number(settlement.amount).toFixed(2)}
+                      <span className="text-receipt-ink text-xs font-black">
+                        {money(Number(settlement.amount), true)}
                       </span>
                     </div>
-
-                    <span className="text-theme-muted text-[10px] normal-case">
-                      {debtor} zgłasza, że wysłał przelew.
-                    </span>
-
-                    <div className="flex items-center gap-2 normal-case">
+                    <div className="mt-2 flex gap-2">
                       <button
                         type="button"
                         disabled={isConfirming || isRejecting}
                         onClick={() => void handleSettlementDecision(settlement.id, "confirmed")}
-                        className="text-theme-accent border-theme-accent/40 rounded-md border border-dashed px-3 py-2 text-[12px] font-bold disabled:opacity-40"
+                        className="bg-receipt-ink text-receipt-paper min-h-11 flex-1 px-3 text-[10px] font-black uppercase disabled:opacity-40"
                       >
-                        {isConfirming ? "zapis..." : "wpłynęło"}
+                        {isConfirming ? "Zapisywanie…" : "Potwierdź"}
                       </button>
-
                       <button
                         type="button"
                         disabled={isConfirming || isRejecting}
                         onClick={() => void handleSettlementDecision(settlement.id, "rejected")}
-                        className="text-theme-muted border-theme-muted/30 rounded-md border border-dashed px-3 py-2 text-[12px] font-bold disabled:opacity-40"
+                        className="border-receipt-line text-receipt-muted min-h-11 border px-3 text-[10px] font-bold uppercase disabled:opacity-40"
                       >
-                        {isRejecting ? "zapis..." : "nie ma"}
+                        {isRejecting ? "Zapisywanie…" : "Nie dotarł"}
                       </button>
                     </div>
                   </div>
                 );
               })}
             </div>
-          )}
+          </div>
+        )}
 
-          {debts.length > 0 && (
-            <div className="flex flex-col gap-2.5">
-              <span className="text-theme-muted/60 text-[11px] tracking-wider">Musisz oddać</span>
+        {isFullySettled ? (
+          <div className="text-receipt-ink border-receipt-line mt-3 flex min-h-14 items-center justify-between border-y border-dashed">
+            <span className="text-xs font-bold">Wszystko rozliczone</span>
+            <Check size={18} />
+          </div>
+        ) : (
+          <div className="mt-3 space-y-5">
+            {debts.length > 0 && (
+              <div>
+                <p className="text-receipt-muted text-[10px] font-black tracking-widest uppercase">
+                  Musisz oddać
+                </p>
+                <div className="divide-receipt-line mt-1 divide-y divide-dashed">
+                  {debts.map((debt) => {
+                    const creditor = getUser(debt.to);
+                    const pending = findPendingToRecipient(debt.to);
 
-              {debts.map((debt) => {
-                const creditorObj = users.find((u) => u.id === debt.to);
-                const creditor = creditorObj?.name ?? "Nieznany";
-                const creditorPhone = creditorObj?.phone; // Pobieramy numer
+                    return (
+                      <div key={debt.to} className="py-3">
+                        {pending ? (
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-receipt-ink flex min-w-0 items-center gap-2 text-xs font-black">
+                              <ArrowUpRight size={16} className="text-receipt-stamp shrink-0" />
+                              {creditor?.name ?? "Nieznany"}
+                            </p>
+                            <div className="text-right">
+                              <span className="text-receipt-stamp block text-sm font-black">
+                                {money(debt.amount, true)}
+                              </span>
+                              <span className="text-receipt-muted text-[9px] font-bold">
+                                Czeka na potwierdzenie
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-receipt-ink flex min-w-0 items-center gap-2 text-xs font-black">
+                              <ArrowUpRight size={16} className="text-receipt-stamp shrink-0" />
+                              {creditor?.name ?? "Nieznany"}
+                            </p>
+                            <div className="flex shrink-0 items-center gap-3">
+                              <span className="text-receipt-stamp text-sm font-black">
+                                {money(debt.amount, true)}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActionError(null);
+                                  setSelectedDebt(debt);
+                                }}
+                                className="border-receipt-ink text-receipt-ink min-h-10 border-b border-dotted px-1 text-[10px] font-black uppercase"
+                              >
+                                Przelej
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-                const pending = findPendingToRecipient(debt.to);
-                const isConfirming = confirmingDebtTo === debt.to;
-                const isReporting = processingKey === `report:${debt.to}`;
+            {receivables.length > 0 && (
+              <div>
+                <p className="text-receipt-muted text-[10px] font-black tracking-widest uppercase">
+                  Czekasz na zwrot
+                </p>
+                <div className="divide-receipt-line mt-1 divide-y divide-dashed">
+                  {receivables.map((receivable) => {
+                    const pendingAmount = pendingAmountFromDebtor(receivable.from);
+                    return (
+                      <div
+                        key={receivable.from}
+                        className="flex items-center justify-between gap-3 py-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-receipt-ink flex items-center gap-2 text-xs font-black">
+                            <ArrowDownLeft size={16} className="text-receipt-ink shrink-0" />
+                            {getUserName(receivable.from)}
+                          </p>
+                          {pendingAmount > 0 && (
+                            <p className="text-receipt-stamp mt-1 ml-6 text-[10px] font-semibold">
+                              {money(pendingAmount, true)} czeka na potwierdzenie
+                            </p>
+                          )}
+                        </div>
+                        <span className="text-receipt-ink shrink-0 text-sm font-black">
+                          {money(receivable.amount, true)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
+        {settlements.length > 0 && (
+          <details className="border-receipt-line mt-4 border-t border-dashed pt-2">
+            <summary className="text-receipt-muted flex min-h-11 cursor-pointer list-none items-center justify-between text-xs font-bold">
+              Historia przelewów ({settlements.length})
+              <ChevronDown size={16} />
+            </summary>
+            <div className="divide-receipt-line divide-y divide-dashed">
+              {settlements.map((settlement) => {
+                const status = getSettlementStatus(settlement);
+                const statusLabel =
+                  status === "confirmed"
+                    ? "potwierdzono"
+                    : status === "pending"
+                      ? "oczekuje"
+                      : "odrzucono";
                 return (
                   <div
-                    key={debt.to}
-                    className="border-theme-border flex items-center justify-between gap-2 border-t border-dashed pt-2 first:border-0 first:pt-0"
+                    key={settlement.id}
+                    className="flex items-center justify-between gap-3 py-2 text-xs"
                   >
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-theme-text/90 flex items-center gap-1.5">
-                        <ArrowUpRight size={14} className="text-theme-primary shrink-0" />
-                        {creditor}
-                      </span>
-
-                      {/* Wyświetlanie BLIK jeśli numer istnieje */}
-                      {creditorPhone && (
-                        <span className="text-theme-muted/70 mt-0.5 ml-5 font-mono text-[9px] tracking-widest uppercase">
-                          BLIK:{" "}
-                          <a
-                            href={`tel:${creditorPhone.replace(/\s/g, "")}`}
-                            className="text-theme-text/80 underline decoration-dotted underline-offset-2"
-                          >
-                            {creditorPhone}
-                          </a>
-                        </span>
-                      )}
-                    </div>
-
-                    {pending ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-theme-primary text-[10px] font-bold normal-case">
-                          czeka na potwierdzenie
-                        </span>
-
-                        <span className="text-theme-primary font-bold">
-                          {Number(pending.amount).toFixed(2)}
-                        </span>
-                      </div>
-                    ) : isConfirming ? (
-                      <div className="flex items-center gap-2 normal-case">
-                        <span className="text-theme-muted text-[10px] whitespace-nowrap">
-                          przelew wysłany?
-                        </span>
-
-                        <button
-                          type="button"
-                          disabled={isReporting}
-                          onClick={() => void handleReportPayment(debt.to, debt.amount)}
-                          className="text-theme-accent border-theme-accent/40 rounded-md border border-dashed px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40"
-                        >
-                          {isReporting ? "zapis..." : "TAK"}
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={isReporting}
-                          onClick={() => setConfirmingDebtTo(null)}
-                          className="text-theme-muted border-theme-muted/30 rounded-md border border-dashed px-2.5 py-1.5 text-[11px] font-bold disabled:opacity-40"
-                        >
-                          NIE
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-theme-primary font-bold">
-                          {debt.amount.toFixed(2)}
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={() => setConfirmingDebtTo(debt.to)}
-                          className="text-theme-primary border-theme-primary/40 rounded-md border border-dashed px-2.5 py-1.5 text-[11px] font-bold normal-case"
-                        >
-                          zgłoś przelew
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {receivables.length > 0 && (
-            <div className="flex flex-col gap-2.5">
-              <span className="text-theme-muted/60 text-[11px] tracking-wider">
-                Czekasz na zwrot od
-              </span>
-
-              {receivables.map((receivable) => {
-                const debtor = getUserName(receivable.from);
-                const pendingAmount = pendingAmountFromDebtor(receivable.from);
-
-                return (
-                  <div key={receivable.from} className="flex items-center justify-between gap-2">
-                    <span className="text-theme-text/70 flex items-center gap-1.5">
-                      <ArrowDownLeft size={14} className="text-theme-accent/70 shrink-0" />
-                      {debtor}
+                    <span className="text-receipt-muted min-w-0 truncate font-semibold">
+                      {getUserName(settlement.user_id)} →{" "}
+                      {getUserName(getSettlementRecipientId(settlement) ?? "")}
                     </span>
-
-                    <div className="flex items-center gap-2">
-                      {pendingAmount > 0 && (
-                        <span className="text-theme-primary text-[10px] font-bold normal-case">
-                          {pendingAmount.toFixed(2)} czeka
-                        </span>
-                      )}
-
-                      <span className="text-theme-accent/90 font-bold">
-                        {receivable.amount.toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {pendingOutgoing.length > 0 && (
-            <div className="border-theme-border flex flex-col gap-2.5 border-t border-dashed pt-3">
-              <span className="text-theme-muted/60 text-[11px] tracking-wider">
-                Oczekuje na potwierdzenie
-              </span>
-
-              {pendingOutgoing.map((settlement) => {
-                const recipientId = getSettlementRecipientId(settlement);
-
-                return (
-                  <div key={settlement.id} className="flex items-center justify-between">
-                    <span className="text-theme-text/70 flex items-center gap-1.5">
-                      <ArrowUpRight size={14} className="text-theme-primary/70 shrink-0" />
-                      {getUserName(recipientId ?? "")}
-                    </span>
-
-                    <span className="text-theme-primary font-bold">
-                      {Number(settlement.amount).toFixed(2)}
+                    <span className="text-receipt-ink shrink-0 font-bold">
+                      {money(Number(settlement.amount))} · {statusLabel}
                     </span>
                   </div>
                 );
               })}
             </div>
-          )}
+          </details>
+        )}
+
+        <div className="border-receipt-ink mt-5 flex items-center justify-between gap-3 border-y-2 py-4">
+          <span className="text-receipt-ink text-xs font-black tracking-widest uppercase">
+            Twój bilans
+          </span>
+          <span
+            className={
+              balance < 0
+                ? "text-receipt-stamp text-base font-black"
+                : "text-receipt-ink text-base font-black"
+            }
+          >
+            {formatFinanceAmount(balance, financeMode, {
+              currency: true,
+              sign: true,
+            })}
+          </span>
         </div>
-      )}
+      </section>
 
-      <div className="bg-theme-primary/10 border-theme-primary/20 relative -mx-2 mt-1 flex justify-between overflow-hidden rounded-lg border px-3 py-3 text-[16px] font-bold uppercase">
-        <div className="bg-theme-primary/5 absolute inset-0 mix-blend-overlay" />
+      <ResponsiveDialog
+        isOpen={selectedDebt !== null}
+        setIsOpen={(isOpen) => {
+          if (!isOpen) setSelectedDebt(null);
+        }}
+        title="Przelew"
+      >
+        {selectedDebt && (
+          <div className="space-y-5">
+            {actionError && (
+              <p className="border-theme-danger/30 bg-theme-danger/8 text-theme-danger rounded-xl border px-3 py-2 text-xs">
+                {actionError}
+              </p>
+            )}
+            <div className="border-theme-border bg-theme-card rounded-2xl border p-5 text-center">
+              <p className="text-theme-muted text-xs font-bold tracking-widest uppercase">Kwota</p>
+              <p className="text-theme-primary mt-1 text-3xl font-black">
+                {money(selectedDebt.amount, true)}
+              </p>
+              <p className="text-theme-text mt-2 text-base font-bold">{selectedCreditor?.name}</p>
+            </div>
 
-        <span className="text-theme-text relative z-10">Twój bilans</span>
+            {selectedPhone && (
+              <button
+                type="button"
+                onClick={() => void handleCopyPhone(selectedPhone)}
+                className="border-theme-border bg-theme-card flex min-h-14 w-full items-center justify-between gap-4 rounded-2xl border px-4"
+              >
+                <span className="text-left">
+                  <span className="text-theme-muted block text-xs">Telefon / BLIK</span>
+                  <span className="text-theme-text block text-lg font-bold tracking-wider">
+                    {selectedPhone}
+                  </span>
+                </span>
+                {copiedPhone === selectedPhone ? (
+                  <Check className="text-theme-success shrink-0" size={20} />
+                ) : (
+                  <Copy className="text-theme-primary shrink-0" size={20} />
+                )}
+              </button>
+            )}
 
-        <span
-          className={`relative z-10 ${
-            balance > 0
-              ? "text-theme-accent"
-              : balance < 0
-                ? "text-theme-primary"
-                : "text-theme-text"
-          }`}
-        >
-          {balance > 0 ? "+" : ""}
-          {balance.toFixed(2)} PLN
-        </span>
-      </div>
-    </div>
+            <button
+              type="button"
+              disabled={processingKey === `report:${selectedDebt.to}`}
+              onClick={() => void handleReportPayment(selectedDebt.to, selectedDebt.amount)}
+              className="bg-theme-primary text-theme-primary-foreground min-h-13 w-full rounded-2xl px-4 text-sm font-black disabled:opacity-40"
+            >
+              {processingKey === `report:${selectedDebt.to}`
+                ? "Zapisywanie…"
+                : "Przelew został wysłany"}
+            </button>
+          </div>
+        )}
+      </ResponsiveDialog>
+
+      <ResponsiveDialog
+        isOpen={settlementStrategy === "optimized" && isStrategyOpen}
+        setIsOpen={setIsStrategyOpen}
+        title="Uproszczone przelewy"
+        description="Łączymy wzajemne długi, aby grupa wykonała mniej przelewów."
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+            <StrategyCount label="Normalnie" count={relationalTransactions.length} />
+            <span className="text-theme-muted text-lg">→</span>
+            <StrategyCount label="Po skróceniu" count={optimizedTransactions.length} highlighted />
+          </div>
+          <div className="border-theme-border bg-theme-card rounded-2xl border p-4">
+            <p className="text-theme-muted text-[10px] font-bold tracking-wider uppercase">
+              Prosty przykład
+            </p>
+            <p className="text-theme-text mt-2 text-sm font-bold">Osoba A → Osoba B → Osoba C</p>
+            <p className="text-theme-primary mt-2 text-sm font-black">Osoba A → Osoba C</p>
+          </div>
+          <p className="text-theme-muted text-xs leading-relaxed">
+            Końcowy bilans każdej osoby pozostaje taki sam. Zmienia się wyłącznie droga pieniędzy.
+          </p>
+        </div>
+      </ResponsiveDialog>
+    </>
   );
 });
+
+function StrategyCount({
+  label,
+  count,
+  highlighted = false,
+}: {
+  label: string;
+  count: number;
+  highlighted?: boolean;
+}) {
+  return (
+    <div
+      className={
+        highlighted
+          ? "border-theme-primary/45 bg-theme-primary/8 rounded-2xl border p-4 text-center"
+          : "border-theme-border rounded-2xl border p-4 text-center"
+      }
+    >
+      <span className="text-theme-muted block text-[10px] font-bold uppercase">{label}</span>
+      <strong className={highlighted ? "text-theme-primary text-2xl" : "text-theme-text text-2xl"}>
+        {count}
+      </strong>
+      <span className="text-theme-muted block text-[10px]">przelewów</span>
+    </div>
+  );
+}

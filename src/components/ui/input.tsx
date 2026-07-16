@@ -6,13 +6,13 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "~/lib/utils";
 
 const InputVariants = cva(
-  "text-theme-text placeholder:text-theme-muted peer w-full appearance-none bg-transparent outline-none transition-colors focus:outline-none disabled:pointer-events-none disabled:opacity-50",
+  "text-theme-text placeholder:text-theme-muted peer w-full appearance-none bg-transparent outline-hidden transition-colors focus:outline-hidden disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
         default: "border-theme-border bg-theme-card focus:border-theme-primary border",
         insetLabel:
-          "border-theme-border bg-theme-card focus:border-theme-primary border pt-5 pb-1 shadow-sm",
+          "border-theme-border bg-theme-card focus:border-theme-primary border pt-5 pb-1 shadow-xs",
       },
       size: {
         default: "h-12 rounded-xl px-4 text-base",

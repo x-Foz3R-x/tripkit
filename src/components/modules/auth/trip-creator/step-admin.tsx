@@ -2,6 +2,7 @@ import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "~/components/ui/input-otp";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
+import { KeyRound, ShieldCheck } from "lucide-react";
 import type { TripFormData } from "./index";
 
 interface Props {
@@ -15,9 +16,17 @@ export function StepAdmin({ data, setData, onNext, onBack }: Props) {
   const isValid = data.adminName.trim().length > 0 && data.adminPin.length === 4;
 
   return (
-    <>
-      <div className="mb-4 text-center">
-        <h2 className="font-heading text-2xl font-bold">Główny Organizator</h2>
+    <div className="animate-fade-in flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <span className="text-theme-primary text-xs font-bold tracking-widest uppercase">
+          Twój profil
+        </span>
+        <h2 className="font-heading text-theme-text text-4xl leading-tight font-semibold">
+          Kto organizuje wyjazd?
+        </h2>
+        <p className="text-theme-muted text-sm">
+          Dostaniesz uprawnienia do edycji wyjazdu i podglądu PIN-ów uczestników.
+        </p>
       </div>
 
       <Input
@@ -26,10 +35,16 @@ export function StepAdmin({ data, setData, onNext, onBack }: Props) {
         onChange={(e) => setData({ ...data, adminName: e.target.value })}
       />
 
-      <div className="flex flex-col items-center gap-2 border-t border-theme-border pt-4">
-        <span className="text-theme-muted text-xs tracking-widest uppercase">
-          Twój 4-cyfrowy PIN
-        </span>
+      <div className="bg-theme-card/70 border-theme-border flex flex-col items-center gap-4 rounded-2xl border p-5">
+        <div className="flex w-full items-start gap-3">
+          <div className="bg-theme-primary/10 text-theme-primary flex h-10 w-10 items-center justify-center rounded-xl">
+            <KeyRound size={19} />
+          </div>
+          <div>
+            <span className="text-theme-text text-sm font-bold">Twój 4-cyfrowy PIN</span>
+            <p className="text-theme-muted text-xs">Prosta blokada przed wejściem na zły profil.</p>
+          </div>
+        </div>
         <InputOTP
           maxLength={4}
           pattern={REGEXP_ONLY_DIGITS}
@@ -41,11 +56,14 @@ export function StepAdmin({ data, setData, onNext, onBack }: Props) {
               <InputOTPSlot
                 key={i}
                 index={i}
-                className="bg-theme-card h-14 w-12 border-theme-border text-xl font-bold"
+                className="bg-theme-card border-theme-border h-14 w-12 text-xl font-bold"
               />
             ))}
           </InputOTPGroup>
         </InputOTP>
+        <p className="text-theme-muted flex items-center gap-1.5 text-[11px]">
+          <ShieldCheck size={14} /> Administratorzy będą mogli go później przypomnieć.
+        </p>
       </div>
 
       <div className="mt-4 flex gap-3">
@@ -56,6 +74,6 @@ export function StepAdmin({ data, setData, onNext, onBack }: Props) {
           Dalej
         </Button>
       </div>
-    </>
+    </div>
   );
 }

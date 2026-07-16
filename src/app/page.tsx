@@ -3,13 +3,10 @@ import { EntryScreen } from "~/components/modules/auth/entry-screen";
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; returnTo?: string }>;
 }) {
-  const { error } = await searchParams;
+  const { error, returnTo } = await searchParams;
+  const safeReturnTo = returnTo && /^\/t\/[a-zA-Z0-9_-]{6,64}$/.test(returnTo) ? returnTo : null;
 
-  return (
-    <div className="text-theme-text min-h-dvh px-4 pt-4">
-      <EntryScreen initialError={error ?? null} />
-    </div>
-  );
+  return <EntryScreen initialError={error ?? null} returnTo={safeReturnTo} />;
 }

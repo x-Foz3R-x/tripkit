@@ -1,11 +1,8 @@
 // src/components/modules/auth/trip-creator/step-basics.tsx
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { pl } from "date-fns/locale";
+import { CalendarIcon, MapPin } from "lucide-react";
 import { Input } from "~/components/ui/input";
 import { Button } from "~/components/ui/button";
-import { Calendar } from "~/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import { DateRangePicker } from "~/components/date-range-picker";
 import type { TripFormData } from "./index";
 
 interface Props {
@@ -16,74 +13,81 @@ interface Props {
 }
 
 export function StepBasics({ data, setData, onNext, onCancel }: Props) {
-  const isValid = data.name.trim().length > 0 && data.dateRange.from && data.dateRange.to;
+  const isValid = data.name.trim().length >= 2;
 
   return (
     <div className="animate-fade-in flex flex-col gap-5">
-      <div className="mb-2 text-center">
-        <h2 className="font-heading text-theme-text text-2xl font-bold">Podstawy wyjazdu</h2>
+      <div className="flex flex-col gap-2">
+        <span className="text-theme-primary text-xs font-bold tracking-widest uppercase">
+          Zacznij od najważniejszego
+        </span>
+        <h2 className="font-heading text-theme-text text-4xl leading-tight font-semibold">
+          Dokąd jedziecie?
+        </h2>
+        <p className="text-theme-muted text-sm">
+          Nazwa wystarczy, żeby utworzyć wyjazd. Resztę możesz pominąć i uzupełnić później.
+        </p>
       </div>
 
-      <div className="flex flex-col gap-1.5 text-left">
-        <label className="text-theme-muted text-[10px] font-bold tracking-widest uppercase">
-          Nazwa wyjazdu
-        </label>
+      <Input
+        label="Nazwa wyjazdu"
+        value={data.name}
+        onChange={(e) => setData({ ...data, name: e.target.value })}
+        placeholder="np. Majówka w Alpach"
+        autoFocus
+        className={{ input: "font-bold" }}
+      />
+
+      <section className="bg-theme-card/70 border-theme-border flex flex-col gap-3 rounded-2xl border p-4">
+        <div className="flex items-start gap-3">
+          <div className="bg-theme-primary/10 text-theme-primary flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+            <MapPin size={19} />
+          </div>
+          <div>
+            <h3 className="text-theme-text font-bold">Miejsce docelowe</h3>
+            <p className="text-theme-muted text-xs">Opcjonalne · zasili kafelek z nawigacją.</p>
+          </div>
+        </div>
         <Input
-          value={data.name}
-          onChange={(e) => setData({ ...data, name: e.target.value })}
-          placeholder="np. Majówka w Alpach"
-          className={{
-            input:
-              "bg-theme-card text-theme-text focus:border-theme-primary border-theme-border font-bold",
-          }}
+          label="Nazwa miejsca"
+          value={data.destinationName}
+          onChange={(event) => setData({ ...data, destinationName: event.target.value })}
+          placeholder="np. Domek nad jeziorem"
         />
-      </div>
+        <Input
+          label="Adres"
+          value={data.destinationAddress}
+          onChange={(event) => setData({ ...data, destinationAddress: event.target.value })}
+          placeholder="Ulica, miejscowość"
+        />
+        <Input
+          type="url"
+          label="Link do mapy (opcjonalnie)"
+          value={data.destinationMapUrl}
+          onChange={(event) => setData({ ...data, destinationMapUrl: event.target.value })}
+          placeholder="https://maps.app.goo.gl/..."
+        />
+      </section>
 
-      {/* POJEDYNCZY KALENDARZ - ZAZNACZANIE PRZEDZIAŁU */}
-      <div className="flex flex-col gap-1.5 text-left">
-        <label className="text-theme-muted text-[10px] font-bold tracking-widest uppercase">
-          Termin wyjazdu
-        </label>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={`bg-theme-card border-theme-border h-13 justify-start rounded-xl text-left font-bold ${
-                !data.dateRange.from ? "text-theme-muted/50" : "text-theme-text"
-              }`}
-            >
-              <CalendarIcon className="text-theme-muted mr-3 h-5 w-5" />
-              {data.dateRange.from ? (
-                data.dateRange.to ? (
-                  <>
-                    {format(data.dateRange.from, "d MMM yyyy", { locale: pl })} -{" "}
-                    {format(data.dateRange.to, "d MMM yyyy", { locale: pl })}
-                  </>
-                ) : (
-                  format(data.dateRange.from, "d MMM yyyy", { locale: pl })
-                )
-              ) : (
-                <span>Wybierz daty (od - do)</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="bg-theme-bg border-theme-border w-auto p-0" align="center">
-            <Calendar
-              mode="range"
-              selected={{ from: data.dateRange.from, to: data.dateRange.to }}
-              onSelect={(range) =>
-                setData({
-                  ...data,
-                  dateRange: { from: range?.from ?? undefined, to: range?.to ?? undefined },
-                })
-              }
-              // initialFocus
-              locale={pl}
-              numberOfMonths={1}
-            />
-          </PopoverContent>
-        </Popover>
-      </div>
+      <section className="bg-theme-card/70 border-theme-border flex flex-col gap-3 rounded-2xl border p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="bg-theme-accent/10 text-theme-accent flex h-10 w-10 shrink-0 items-center justify-center rounded-xl">
+              <CalendarIcon size={19} />
+            </div>
+            <div>
+              <h3 className="text-theme-text font-bold">Termin</h3>
+              <p className="text-theme-muted text-xs">
+                Opcjonalny · możesz wybrać także jeden dzień.
+              </p>
+            </div>
+          </div>
+        </div>
+        <DateRangePicker
+          value={data.dateRange}
+          onChange={(dateRange) => setData({ ...data, dateRange })}
+        />
+      </section>
 
       <div className="mt-4 flex gap-3">
         <Button

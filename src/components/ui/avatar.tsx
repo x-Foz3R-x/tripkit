@@ -1,13 +1,13 @@
 import { cn } from "~/lib/utils";
 
 const AVATAR_COLORS = [
-  "bg-blue-500/20 text-blue-500",
-  "bg-theme-success/20 text-theme-success",
-  "bg-rose-500/20 text-rose-500",
-  "bg-amber-500/20 text-amber-500",
-  "bg-green-500/20 text-green-500",
-  "bg-cyan-500/20 text-cyan-500",
-  "bg-fuchsia-500/20 text-fuchsia-500",
+  "bg-blue-900 text-blue-200",
+  "bg-emerald-900 text-emerald-200",
+  "bg-rose-900 text-rose-200",
+  "bg-amber-900 text-amber-200",
+  "bg-green-900 text-green-200",
+  "bg-cyan-900 text-cyan-200",
+  "bg-fuchsia-900 text-fuchsia-200",
 ];
 
 // Funkcja, która zawsze zwraca ten sam index koloru dla danego tekstu (np. ID)
@@ -21,7 +21,7 @@ function getColorClass(id: string) {
 }
 
 interface AvatarProps {
-  user: { id: string; name: string };
+  user: { id: string; name: string; avatarUrl?: string | null };
   className?: string;
 }
 
@@ -30,13 +30,24 @@ export function Avatar({ user, className }: AvatarProps) {
 
   return (
     <div
+      role="img"
+      aria-label={`Avatar ${user.name}`}
+      style={
+        user.avatarUrl
+          ? {
+              backgroundImage: `url(${JSON.stringify(user.avatarUrl)})`,
+              backgroundPosition: "center",
+              backgroundSize: "cover",
+            }
+          : undefined
+      }
       className={cn(
-        "font-heading flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-2xl uppercase",
+        "font-heading flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full text-2xl uppercase",
         colorClass,
         className,
       )}
     >
-      {user.name.charAt(0)}
+      {!user.avatarUrl && user.name.charAt(0)}
     </div>
   );
 }
