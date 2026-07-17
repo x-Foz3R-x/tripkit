@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { createTripAction } from "~/app/actions/trips";
 import { announceNavigationStart } from "~/lib/navigation-feedback";
-import { StepBasics } from "~/components/modules/create/step-basics";
-import { StepModules } from "~/components/modules/create/step-modules";
-import { StepAdmin } from "~/components/modules/create/step-admin";
-import { StepMembers } from "~/components/modules/create/step-members";
-import { StepTeams } from "~/components/modules/create/step-teams";
-import { StepReview } from "~/components/modules/create/step-review";
+import { StepBasics } from "~/components/modules/trip-creator/step-basics";
+import { StepModules } from "~/components/modules/trip-creator/step-modules";
+import { StepAdmin } from "~/components/modules/trip-creator/step-admin";
+import { StepMembers } from "~/components/modules/trip-creator/step-members";
+import { StepTeams } from "~/components/modules/trip-creator/step-teams";
+import { StepReview } from "~/components/modules/trip-creator/step-review";
 import {
   DEFAULT_DASHBOARD_WIDGETS,
   DEFAULT_TRIP_MODULES,
