@@ -81,7 +81,10 @@ export const ExpenseReceipt = memo(function ExpenseReceipt({
   const isEmpty = expenses.length === 0;
 
   return (
-    <section className="thermal-receipt text-receipt-ink -mx-2 mt-4 w-auto max-w-none px-5 py-7 font-mono">
+    <section
+      data-bottom-nav-tone="light"
+      className="thermal-receipt text-receipt-ink -mx-2 mt-4 w-auto max-w-none px-5 py-7 font-mono"
+    >
       <ReceiptHeader
         tripIdShort={tripIdShort}
         issuedAt={issuedAt}

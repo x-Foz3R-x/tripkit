@@ -13,6 +13,7 @@
   --color-brand-surface-raised: var(--brand-surface-raised);
   --color-brand-border: var(--brand-border);
   --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-strong: var(--brand-accent-strong);
   --color-brand-accent-hover: var(--brand-accent-hover);
   --color-brand-accent-pressed: var(--brand-accent-pressed);
   --color-brand-accent-foreground: var(--brand-accent-foreground);
@@ -86,6 +87,7 @@
     --brand-surface-raised: #32220d;
     --brand-border: #4a351b;
     --brand-accent: #ffb44a;
+    --brand-accent-strong: #a95000;
     --brand-accent-hover: #ffc56a;
     --brand-accent-pressed: #e89a2f;
     --brand-accent-foreground: #1a0f00;
