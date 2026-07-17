@@ -282,12 +282,12 @@ export function ShoppingScreen({
       >
         <span className="bg-theme-primary/45 absolute inset-y-0 left-6 w-px" />
         <div className="absolute top-[calc(env(safe-area-inset-top)+1rem)] left-0 flex w-full justify-around px-8">
-          {[0, 1, 2, 3, 4, 5].map((hole) => (
-            <span
-              key={hole}
-              className="bg-theme-bg border-theme-border h-2 w-2 rounded-full border"
-            />
-          ))}
+          <span className="bg-theme-bg border-theme-border h-2 w-2 rounded-full border" />
+          <span className="bg-theme-bg border-theme-border h-2 w-2 rounded-full border" />
+          <span className="bg-theme-bg border-theme-border h-2 w-2 rounded-full border" />
+          <span className="bg-theme-bg border-theme-border h-2 w-2 rounded-full border" />
+          <span className="bg-theme-bg border-theme-border h-2 w-2 rounded-full border" />
+          <span className="bg-theme-bg border-theme-border h-2 w-2 rounded-full border" />
         </div>
 
         <header className="px-5 pt-12 pb-4 pl-11">

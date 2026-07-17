@@ -238,7 +238,7 @@ export const ShoppingList = memo(function ShoppingList({
                         >
                           <span
                             className={cn(
-                              "font-note text-theme-text line-clamp-2 block text-lg leading-6 break-words transition",
+                              "font-note text-theme-text line-clamp-2 block text-lg leading-6 wrap-break-word transition",
                               item.is_completed &&
                                 "text-theme-muted decoration-theme-muted/70 line-clamp-2 line-through decoration-2",
                             )}
