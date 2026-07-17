@@ -33,6 +33,8 @@ interface ExpenseReceiptProps {
   optimizedTransactions: Transaction[];
   onDataChanged: () => void;
   onAddExpense: () => void;
+  readOnly: boolean;
+  canManageExpenses: boolean;
 }
 
 export const ExpenseReceipt = memo(function ExpenseReceipt({
@@ -48,6 +50,8 @@ export const ExpenseReceipt = memo(function ExpenseReceipt({
   optimizedTransactions,
   onDataChanged,
   onAddExpense,
+  readOnly,
+  canManageExpenses,
 }: ExpenseReceiptProps) {
   const { tripId } = useTripRoute();
   const regularExpenses = useMemo(
@@ -84,9 +88,15 @@ export const ExpenseReceipt = memo(function ExpenseReceipt({
         activeUserName={activeUserName}
         financeMode={financeMode}
         isEmpty={isEmpty}
-        onAddExpense={onAddExpense}
+        onAddExpense={readOnly ? undefined : onAddExpense}
       />
-      <ReceiptExpenseList expenses={regularExpenses} users={users} financeMode={financeMode} />
+      <ReceiptExpenseList
+        expenses={regularExpenses}
+        users={users}
+        financeMode={financeMode}
+        canManageExpenses={canManageExpenses}
+        onDataChanged={onDataChanged}
+      />
       <ReceiptSummary
         outstandingTotal={outstandingTotal}
         totalCost={totalCost}
@@ -106,6 +116,7 @@ export const ExpenseReceipt = memo(function ExpenseReceipt({
             relationalTransactions={relationalTransactions}
             optimizedTransactions={optimizedTransactions}
             onDataChanged={onDataChanged}
+            readOnly={readOnly}
           />
           <ReceiptFooter tripIdShort={tripIdShort} />
         </>

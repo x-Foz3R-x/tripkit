@@ -7,6 +7,8 @@
 --   3. shopping, finances, joining and settings were smoke-tested there,
 --   4. the current trip no longer depends on the legacy client.
 
+begin;
+
 alter table public.trips enable row level security;
 alter table public.users enable row level security;
 alter table public.teams enable row level security;
@@ -29,3 +31,17 @@ comment on table public.trips is
   'Accessed by the Wyjezdnik server after validation of a signed trip session.';
 comment on table public.users is
   'Trip participants; accessed by the Wyjezdnik server after session validation.';
+
+commit;
+
+-- Raport po wykonaniu: anon_select/insert/update/delete powinny mieć wartość false,
+-- a service_role_all wartość true dla każdego wiersza.
+select
+  table_name,
+  has_table_privilege('anon', format('public.%I', table_name), 'select') as anon_select,
+  has_table_privilege('anon', format('public.%I', table_name), 'insert') as anon_insert,
+  has_table_privilege('anon', format('public.%I', table_name), 'update') as anon_update,
+  has_table_privilege('anon', format('public.%I', table_name), 'delete') as anon_delete,
+  has_table_privilege('service_role', format('public.%I', table_name), 'select,insert,update,delete')
+    as service_role_all
+from unnest(array['trips', 'users', 'teams', 'expenses', 'shopping_list']) as table_name;

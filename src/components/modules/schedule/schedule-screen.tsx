@@ -4,13 +4,23 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
-import { CalendarDays, Clock3, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronUp,
+  Clock3,
+  MapPin,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { deleteScheduleItemAction, saveScheduleItemAction } from "~/app/actions/schedule";
 import { DatePicker } from "~/components/date-range-picker";
 import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import type { Database } from "~/types/database";
+import { useTripRoute } from "~/providers/trip-route-provider";
 
 type ScheduleItem = Database["public"]["Tables"]["schedule_items"]["Row"];
 
@@ -27,6 +37,8 @@ export function ScheduleScreen({
   databaseReady: boolean;
   tripStartDate: string | null;
 }) {
+  const { isClosed } = useTripRoute();
+  const canManage = isAdmin && !isClosed;
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [activeItem, setActiveItem] = useState<ScheduleItem | null>(null);
   const groups = useMemo(() => groupItems(items), [items]);
@@ -51,7 +63,7 @@ export function ScheduleScreen({
               {items[0] ? `Najbliżej: ${items[0].title}` : "Miejsce na plan albo pełen spontan."}
             </p>
           </div>
-          {isAdmin && databaseReady ? (
+          {canManage && databaseReady ? (
             <Button
               size="icon"
               onClick={() => openEditor(null)}
@@ -67,8 +79,8 @@ export function ScheduleScreen({
         <section className="border-theme-accent/30 bg-theme-accent/10 rounded-2xl border p-5">
           <h2 className="text-theme-text font-bold">Harmonogram czeka na migrację</h2>
           <p className="text-theme-muted mt-1 text-sm">
-            Dane wyjazdu są bezpieczne. Administrator musi uruchomić najnowszą migrację Supabase,
-            aby można było dodawać wydarzenia.
+            Dane wyjazdu są bezpieczne. Zarządca musi uruchomić najnowszą migrację Supabase, aby
+            można było dodawać wydarzenia.
           </p>
         </section>
       ) : groups.length === 0 ? (
@@ -84,7 +96,7 @@ export function ScheduleScreen({
               Jeśli ten wyjazd jest spontaniczny, nic nie musisz dodawać.
             </p>
           </div>
-          {isAdmin && <Button onClick={() => openEditor(null)}>Dodaj pierwszy punkt</Button>}
+          {canManage && <Button onClick={() => openEditor(null)}>Dodaj pierwszy punkt</Button>}
         </section>
       ) : (
         <div className="flex flex-col gap-7">
@@ -132,13 +144,13 @@ export function ScheduleScreen({
                               </p>
                             )}
                           </div>
-                          {isAdmin && <Pencil className="text-theme-muted shrink-0" size={15} />}
+                          {canManage && <Pencil className="text-theme-muted shrink-0" size={15} />}
                         </div>
                       </div>
                     </>
                   );
 
-                  return isAdmin ? (
+                  return canManage ? (
                     <button
                       key={item.id}
                       type="button"
@@ -160,10 +172,10 @@ export function ScheduleScreen({
       )}
 
       <ResponsiveDialog
-        isOpen={isEditorOpen}
+        isOpen={isEditorOpen && canManage}
         setIsOpen={setIsEditorOpen}
         title={activeItem ? "Edytuj punkt planu" : "Nowy punkt planu"}
-        description="Dodaj tylko tyle szczegółów, ile naprawdę jest potrzebne."
+        description="Nazwa i dzień wystarczą. Resztę możesz pominąć."
       >
         <ScheduleItemForm
           key={activeItem?.id ?? "new"}
@@ -195,9 +207,19 @@ function ScheduleItemForm({
   );
   const [startTime, setStartTime] = useState(formatTime(item?.start_time) ?? "");
   const [endTime, setEndTime] = useState(formatTime(item?.end_time) ?? "");
-  const [locationName, setLocationName] = useState(item?.location_name ?? "");
-  const [locationAddress, setLocationAddress] = useState(item?.location_address ?? "");
+  const [locationName, setLocationName] = useState(
+    [item?.location_name, item?.location_address].filter(Boolean).join(" · "),
+  );
   const [notes, setNotes] = useState(item?.notes ?? "");
+  const [showDetails, setShowDetails] = useState(
+    Boolean(
+      item?.start_time ||
+      item?.end_time ||
+      item?.location_name ||
+      item?.location_address ||
+      item?.notes,
+    ),
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -219,7 +241,7 @@ function ScheduleItemForm({
       startTime: nullable(startTime),
       endTime: nullable(endTime),
       locationName: nullable(locationName),
-      locationAddress: nullable(locationAddress),
+      locationAddress: null,
     });
     setIsSaving(false);
     if (!result.ok) {
@@ -252,50 +274,56 @@ function ScheduleItemForm({
         </div>
       )}
       <Input
-        label="Nazwa punktu"
+        label="Co robimy?"
         value={title}
         onChange={(event) => setTitle(event.target.value)}
-        placeholder="np. Wyjazd z parkingu"
+        placeholder="np. Wyjazd, plaża, kolacja"
         autoFocus
       />
       <DatePicker value={eventDate} onChange={setEventDate} />
-      <div className="grid grid-cols-2 gap-3">
-        <Input
-          type="time"
-          label="Od"
-          value={startTime}
-          onChange={(event) => setStartTime(event.target.value)}
-        />
-        <Input
-          type="time"
-          label="Do"
-          value={endTime}
-          onChange={(event) => setEndTime(event.target.value)}
-        />
-      </div>
-      <Input
-        label="Miejsce"
-        value={locationName}
-        onChange={(event) => setLocationName(event.target.value)}
-        placeholder="np. Domek, plaża, dworzec"
-      />
-      <Input
-        label="Adres"
-        value={locationAddress}
-        onChange={(event) => setLocationAddress(event.target.value)}
-        placeholder="Opcjonalny"
-      />
-      <label className="flex flex-col gap-2">
-        <span className="text-theme-muted text-xs font-bold">Notatka</span>
-        <textarea
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-          rows={4}
-          maxLength={1000}
-          placeholder="Co warto wiedzieć?"
-          className="bg-theme-card border-theme-border text-theme-text placeholder:text-theme-muted/60 focus:border-theme-primary resize-none rounded-xl border p-3 outline-hidden"
-        />
-      </label>
+      <button
+        type="button"
+        onClick={() => setShowDetails((visible) => !visible)}
+        className="border-theme-border text-theme-muted hover:text-theme-text flex min-h-11 items-center justify-between rounded-xl border px-3 text-sm font-bold transition"
+      >
+        <span>{showDetails ? "Ukryj szczegóły" : "Dodaj godzinę, miejsce lub notatkę"}</span>
+        {showDetails ? <ChevronUp size={17} /> : <ChevronDown size={17} />}
+      </button>
+      {showDetails && (
+        <div className="animate-fade-in flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              type="time"
+              label="Od"
+              value={startTime}
+              onChange={(event) => setStartTime(event.target.value)}
+            />
+            <Input
+              type="time"
+              label="Do (opcjonalnie)"
+              value={endTime}
+              onChange={(event) => setEndTime(event.target.value)}
+            />
+          </div>
+          <Input
+            label="Miejsce lub adres"
+            value={locationName}
+            onChange={(event) => setLocationName(event.target.value)}
+            placeholder="np. Plaża miejska"
+          />
+          <label className="flex flex-col gap-2">
+            <span className="text-theme-muted text-xs font-bold">Krótka notatka</span>
+            <textarea
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              rows={3}
+              maxLength={1000}
+              placeholder="Tylko jeśli trzeba coś dopowiedzieć"
+              className="bg-theme-card border-theme-border text-theme-text placeholder:text-theme-muted/60 focus:border-theme-primary resize-none rounded-xl border p-3 outline-hidden"
+            />
+          </label>
+        </div>
+      )}
       <div className="flex gap-3 pt-1">
         {item && (
           <Button

@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getTripSession } from "~/lib/server/trip-session";
-import { createServerSupabaseClient, hasSupabaseSecretKey } from "~/lib/supabase/server";
+import { closedTripMutationError, getTripActionContext } from "~/lib/server/trip-action-context";
 
 const playlistSchema = z.object({
   id: z.string().uuid().nullable(),
@@ -20,20 +19,8 @@ const deletePlaylistSchema = z.object({
 type PlaylistResult = { ok: true } | { ok: false; error: string };
 
 async function getAdminContext(tripKey: string) {
-  if (!hasSupabaseSecretKey()) return null;
-  const session = await getTripSession(tripKey);
-  if (!session?.userId) return null;
-
-  const supabase = createServerSupabaseClient();
-  const { data: participant } = await supabase
-    .from("users")
-    .select("id, is_admin")
-    .eq("id", session.userId)
-    .eq("trip_id", session.tripId)
-    .maybeSingle();
-
-  if (!participant?.is_admin) return null;
-  return { session, participantId: participant.id, supabase };
+  const context = await getTripActionContext(tripKey);
+  return context?.participant.is_admin ? context : null;
 }
 
 async function syncLegacyPlaylist(
@@ -70,7 +57,9 @@ export async function savePlaylistAction(input: {
   if (!parsed.success) return { ok: false, error: "Podaj nazwę i prawidłowy link." };
 
   const context = await getAdminContext(parsed.data.tripKey);
-  if (!context) return { ok: false, error: "Tylko administrator może zmieniać playlisty." };
+  if (!context) return { ok: false, error: "Tylko Zarządca może zmieniać playlisty." };
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const result = parsed.data.id
     ? await context.supabase
@@ -86,7 +75,7 @@ export async function savePlaylistAction(input: {
         trip_id: context.session.tripId,
         name: parsed.data.name,
         url: parsed.data.url,
-        created_by: context.participantId,
+        created_by: context.participant.id,
       });
 
   if (result.error) return { ok: false, error: playlistError(result.error.code) };
@@ -103,7 +92,9 @@ export async function deletePlaylistAction(input: {
   if (!parsed.success) return { ok: false, error: "Nieprawidłowa playlista." };
 
   const context = await getAdminContext(parsed.data.tripKey);
-  if (!context) return { ok: false, error: "Tylko administrator może zmieniać playlisty." };
+  if (!context) return { ok: false, error: "Tylko Zarządca może zmieniać playlisty." };
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const { error } = await context.supabase
     .from("trip_playlists")

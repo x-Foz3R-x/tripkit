@@ -10,14 +10,48 @@ export async function getTripActionContext(tripKey: string) {
   if (!session?.userId || session.urlKey !== tripKey) return null;
 
   const supabase = createServerSupabaseClient();
-  const { data: participant, error } = await supabase
-    .from("users")
-    .select("id, is_admin, team_id")
-    .eq("id", session.userId)
-    .eq("trip_id", session.tripId)
-    .maybeSingle();
+  const [{ data: participant, error }, tripResult] = await Promise.all([
+    supabase
+      .from("users")
+      .select("id, is_admin, team_id")
+      .eq("id", session.userId)
+      .eq("trip_id", session.tripId)
+      .maybeSingle(),
+    supabase
+      .from("trips")
+      .select("id, status")
+      .eq("id", session.tripId)
+      .eq("url_key", tripKey)
+      .maybeSingle(),
+  ]);
 
   if (error || !participant) return null;
 
-  return { participant, session, supabase };
+  let trip = tripResult.data;
+  if (tripResult.error && ["42703", "PGRST204"].includes(tripResult.error.code)) {
+    const fallback = await supabase
+      .from("trips")
+      .select("id")
+      .eq("id", session.tripId)
+      .eq("url_key", tripKey)
+      .maybeSingle();
+    if (fallback.error || !fallback.data) return null;
+    trip = { id: fallback.data.id, status: "active" };
+  }
+
+  if (tripResult.error && !["42703", "PGRST204"].includes(tripResult.error.code)) return null;
+  if (!trip) return null;
+
+  return { participant, session, supabase, trip, isClosed: trip.status === "closed" };
+}
+
+export function closedTripMutationError(context: {
+  isClosed: boolean;
+}): { ok: false; error: string } | null {
+  return context.isClosed
+    ? {
+        ok: false,
+        error: "Ten wyjazd został zamknięty przez Zarządcę i jest dostępny tylko do wglądu.",
+      }
+    : null;
 }

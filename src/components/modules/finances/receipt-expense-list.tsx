@@ -10,6 +10,10 @@ import {
   type FinanceMode,
 } from "~/lib/finances";
 import { ResponsiveDialog } from "~/components/responsive-dialog";
+import { Button } from "~/components/ui/button";
+import { ExpenseForm } from "~/components/modules/finances/receipt-form";
+import { deleteExpenseAction } from "~/app/actions/finances";
+import { useTripRoute } from "~/providers/trip-route-provider";
 
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
 
@@ -17,6 +21,8 @@ interface ReceiptExpenseListProps {
   expenses: FinanceExpense[];
   users: User[];
   financeMode: FinanceMode;
+  canManageExpenses: boolean;
+  onDataChanged: () => void;
 }
 
 const INITIAL_VISIBLE_EXPENSES = 4;
@@ -25,9 +31,15 @@ export const ReceiptExpenseList = memo(function ReceiptExpenseList({
   expenses,
   users,
   financeMode,
+  canManageExpenses,
+  onDataChanged,
 }: ReceiptExpenseListProps) {
+  const { urlKey, userId } = useTripRoute();
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState<FinanceExpense | null>(null);
+  const [editingExpense, setEditingExpense] = useState<FinanceExpense | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const newestFirstExpenses = useMemo(
     () =>
       [...expenses].sort((first, second) => {
@@ -48,6 +60,27 @@ export const ReceiptExpenseList = memo(function ReceiptExpenseList({
   const selectedShares = selectedExpense
     ? getExpenseParticipantShares(selectedExpense, financeMode)
     : [];
+
+  const removeSelectedExpense = async () => {
+    if (!selectedExpense || isDeleting) return;
+    if (!window.confirm(`Usunąć wydatek „${selectedExpense.description}”?`)) return;
+
+    setIsDeleting(true);
+    setActionError(null);
+    const result = await deleteExpenseAction({
+      tripKey: urlKey,
+      expenseId: selectedExpense.id,
+    });
+    setIsDeleting(false);
+
+    if (!result.ok) {
+      setActionError(result.error);
+      return;
+    }
+
+    setSelectedExpense(null);
+    onDataChanged();
+  };
 
   return (
     <>
@@ -175,7 +208,59 @@ export const ReceiptExpenseList = memo(function ReceiptExpenseList({
                 ))}
               </div>
             </section>
+
+            {actionError && (
+              <p className="border-theme-danger/30 bg-theme-danger/8 text-theme-danger rounded-xl border px-3 py-2 text-xs">
+                {actionError}
+              </p>
+            )}
+
+            {canManageExpenses && (
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setEditingExpense(selectedExpense);
+                    setSelectedExpense(null);
+                  }}
+                >
+                  Popraw
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isDeleting}
+                  className="border-theme-danger/35 text-theme-danger"
+                  onClick={() => void removeSelectedExpense()}
+                >
+                  {isDeleting ? "Usuwanie…" : "Usuń"}
+                </Button>
+              </div>
+            )}
           </div>
+        )}
+      </ResponsiveDialog>
+
+      <ResponsiveDialog
+        isOpen={editingExpense !== null}
+        setIsOpen={(isOpen) => {
+          if (!isOpen) setEditingExpense(null);
+        }}
+        title="Popraw wydatek"
+        description="Zmiana zostanie zapisana w historii rozliczeń."
+      >
+        {editingExpense && (
+          <ExpenseForm
+            key={editingExpense.id}
+            users={users}
+            activeUserId={userId ?? editingExpense.user_id}
+            expense={editingExpense}
+            onSuccess={() => {
+              setEditingExpense(null);
+              onDataChanged();
+            }}
+          />
         )}
       </ResponsiveDialog>
     </>

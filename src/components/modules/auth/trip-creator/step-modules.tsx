@@ -23,6 +23,7 @@ import {
 } from "~/lib/trip-config";
 import { cn } from "~/lib/utils";
 import type { TripFormData } from "./index";
+import { PACKING_PRESETS, type PackingPresetKey } from "~/lib/packing";
 
 interface Props {
   data: TripFormData;
@@ -39,7 +40,6 @@ export function StepModules({ data, setData, onNext, onBack }: Props) {
     finances: ReceiptText,
     packing: Backpack,
     quests: Sparkles,
-    playlist: Music2,
   };
 
   const gameplayOptions: Array<{
@@ -104,6 +104,16 @@ export function StepModules({ data, setData, onNext, onBack }: Props) {
     });
   };
 
+  const togglePackingPreset = (key: PackingPresetKey) => {
+    const enabled = data.packingPresets.includes(key);
+    setData({
+      ...data,
+      packingPresets: enabled
+        ? data.packingPresets.filter((preset) => preset !== key)
+        : [...data.packingPresets, key],
+    });
+  };
+
   return (
     <div className="animate-fade-in flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -119,43 +129,47 @@ export function StepModules({ data, setData, onNext, onBack }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        {TRIP_MODULES.filter((module) => module.key !== "quests").map((module) => {
-          const Icon = icons[module.key];
-          const enabled = data.modules[module.key];
-          return (
-            <button
-              key={module.key}
-              type="button"
-              onClick={() => toggle(module.key)}
-              className={cn(
-                "relative flex min-h-36 flex-col items-start gap-3 rounded-2xl border p-4 text-left transition-all active:scale-98",
-                enabled
-                  ? "border-theme-primary/50 bg-theme-primary/10"
-                  : "bg-theme-card/70 border-theme-border",
-              )}
-            >
-              <span
+        {TRIP_MODULES.filter((module) => module.key !== "quests" && module.key !== "packing").map(
+          (module) => {
+            const Icon = icons[module.key];
+            const enabled = data.modules[module.key];
+            return (
+              <button
+                key={module.key}
+                type="button"
+                onClick={() => toggle(module.key)}
                 className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-xl",
+                  "relative flex min-h-36 flex-col items-start gap-3 rounded-2xl border p-4 text-left transition-all active:scale-98",
                   enabled
-                    ? "bg-theme-primary text-theme-primary-foreground"
-                    : "bg-theme-card-raised text-theme-muted",
+                    ? "border-theme-primary/50 bg-theme-primary/10"
+                    : "bg-theme-card/70 border-theme-border",
                 )}
               >
-                <Icon size={19} />
-              </span>
-              <span className="flex flex-col gap-1">
-                <strong className="text-theme-text text-sm">{module.name}</strong>
-                <span className="text-theme-muted text-xs leading-snug">{module.description}</span>
-              </span>
-              {enabled && (
-                <span className="bg-theme-primary text-theme-primary-foreground absolute top-3 right-3 flex h-5 w-5 items-center justify-center rounded-full">
-                  <Check size={13} strokeWidth={3} />
+                <span
+                  className={cn(
+                    "flex h-10 w-10 items-center justify-center rounded-xl",
+                    enabled
+                      ? "bg-theme-primary text-theme-primary-foreground"
+                      : "bg-theme-card-raised text-theme-muted",
+                  )}
+                >
+                  <Icon size={19} />
                 </span>
-              )}
-            </button>
-          );
-        })}
+                <span className="flex flex-col gap-1">
+                  <strong className="text-theme-text text-sm">{module.name}</strong>
+                  <span className="text-theme-muted text-xs leading-snug">
+                    {module.description}
+                  </span>
+                </span>
+                {enabled && (
+                  <span className="bg-theme-primary text-theme-primary-foreground absolute top-3 right-3 flex h-5 w-5 items-center justify-center rounded-full">
+                    <Check size={13} strokeWidth={3} />
+                  </span>
+                )}
+              </button>
+            );
+          },
+        )}
       </div>
 
       {data.modules.scoreboard && (
@@ -202,15 +216,57 @@ export function StepModules({ data, setData, onNext, onBack }: Props) {
         </div>
       )}
 
-      {data.modules.playlist && (
+      <div className="flex flex-col gap-3">
+        <div>
+          <h3 className="text-theme-text text-sm font-bold">Co warto spakować?</h3>
+          <p className="text-theme-muted mt-1 text-xs">
+            Każdy uczestnik dostanie prywatną listę z wybranych zestawów.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {PACKING_PRESETS.map((preset) => {
+            const enabled = data.packingPresets.includes(preset.key);
+            return (
+              <button
+                key={preset.key}
+                type="button"
+                onClick={() => togglePackingPreset(preset.key)}
+                className={cn(
+                  "relative flex min-h-24 flex-col items-start rounded-xl border p-3 text-left transition active:scale-98",
+                  enabled
+                    ? "border-theme-primary/45 bg-theme-primary/10"
+                    : "border-theme-border bg-theme-card/55",
+                )}
+              >
+                <strong className="text-theme-text pr-5 text-xs">{preset.name}</strong>
+                <span className="text-theme-muted mt-1 text-[10px] leading-snug">
+                  {preset.description}
+                </span>
+                {enabled && (
+                  <Check className="text-theme-primary absolute top-3 right-3" size={14} />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Music2 className="text-theme-primary" size={17} />
+          <h3 className="text-theme-text text-sm font-bold">Playlista (opcjonalnie)</h3>
+        </div>
         <Input
           type="url"
-          label="Link do wspólnej playlisty"
+          label="Link do pierwszej playlisty"
           value={data.playlistUrl}
           onChange={(event) => setData({ ...data, playlistUrl: event.target.value })}
           placeholder="YouTube Music, Spotify…"
         />
-      )}
+        <p className="text-theme-muted text-[10px]">
+          Jeśli dodasz link, playlista automatycznie pojawi się w Bazie i w „Więcej”.
+        </p>
+      </div>
 
       <div className="mt-4 flex gap-3">
         <Button variant="outline" onClick={onBack} className="flex-1">

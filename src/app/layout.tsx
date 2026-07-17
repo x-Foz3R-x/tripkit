@@ -7,6 +7,7 @@ import {
   Nunito_Sans,
 } from "next/font/google";
 import type { Viewport } from "next";
+import { MotionProvider } from "~/providers/motion-provider";
 
 const fontHeading = Bricolage_Grotesque({
   subsets: ["latin", "latin-ext"],
@@ -43,6 +44,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   interactiveWidget: "resizes-visual",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -60,7 +62,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <div className="via-theme-bg/50 to-theme-bg absolute inset-0 bg-linear-to-b from-transparent" />
         </div>
 
-        <main className="relative z-10 mx-auto min-h-dvh max-w-md">{children}</main>
+        <MotionProvider>
+          <main className="relative z-10 mx-auto min-h-dvh max-w-md">{children}</main>
+        </MotionProvider>
       </body>
     </html>
   );

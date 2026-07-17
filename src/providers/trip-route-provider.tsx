@@ -12,6 +12,7 @@ export type TripRouteContextValue = {
   userName: string | null;
   userAvatarUrl: string | null;
   isAdmin: boolean;
+  isClosed: boolean;
   financeMode: FinanceMode;
   settlementStrategy: SettlementStrategy;
   modules: TripModules;

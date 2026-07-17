@@ -2,13 +2,11 @@ import { notFound, redirect } from "next/navigation";
 import { Dashboard } from "~/components/modules/hub/dashboard";
 import { getTripByUrlKey, getTripParticipant, getTripPlaylists } from "~/lib/server/trips";
 import { getTripSession } from "~/lib/server/trip-session";
-import {
-  getAutomaticDashboardWidgets,
-  parseGameplayDashboardWidgets,
-  parseTripModules,
-} from "~/lib/trip-config";
+import { getAutomaticDashboardWidgets, parseTripModules } from "~/lib/trip-config";
 import { getDashboardInsights } from "~/lib/server/dashboard";
 import { parseFinanceMode } from "~/lib/finances";
+import { createServerSupabaseClient } from "~/lib/supabase/server";
+import { getPackingPresetItems, parsePackingPresetKeys } from "~/lib/packing";
 
 export default async function TripDashboardPage({
   params,
@@ -28,19 +26,44 @@ export default async function TripDashboardPage({
 
   const modules = parseTripModules(trip.modules);
   const financeMode = parseFinanceMode(trip.finance_mode);
-  const [playlists, insights] = await Promise.all([
+  const supabase = createServerSupabaseClient();
+  const [
+    playlists,
+    insights,
+    packingStatesResult,
+    packingPersonalItemsResult,
+    usersResult,
+    teamsResult,
+  ] = await Promise.all([
     getTripPlaylists(trip.id, trip.playlist_url ?? null),
-    getDashboardInsights({ tripId: trip.id, userId: participant.id, modules, financeMode }),
+    getDashboardInsights({
+      tripId: trip.id,
+      modules,
+    }),
+    supabase
+      .from("packing_item_states")
+      .select("item_key, is_checked, is_hidden")
+      .eq("trip_id", trip.id)
+      .eq("user_id", participant.id),
+    supabase
+      .from("packing_personal_items")
+      .select("*")
+      .eq("trip_id", trip.id)
+      .eq("user_id", participant.id)
+      .order("sort_order")
+      .order("created_at"),
+    supabase
+      .from("users")
+      .select("id, name, avatar_url, is_admin, last_seen_at, team_id")
+      .eq("trip_id", trip.id)
+      .order("name"),
+    supabase.from("teams").select("id, name, color_hex").eq("trip_id", trip.id),
   ]);
-  const gameplayWidgets = parseGameplayDashboardWidgets(
-    trip.dashboard_widgets,
-    trip.layout_config,
-    modules,
-  );
+  const packingPresetItems = getPackingPresetItems(parsePackingPresetKeys(trip.packing_presets));
   const dashboardWidgets = getAutomaticDashboardWidgets({
     modules,
     hasDestination: Boolean(trip.destination_name || trip.destination_address),
-    gameplayWidgets,
+    hasPlaylists: playlists.length > 0,
   });
 
   return (
@@ -63,6 +86,29 @@ export default async function TripDashboardPage({
       financeMode={financeMode}
       dashboardWidgets={dashboardWidgets}
       insights={insights}
+      participants={(usersResult.data ?? []).map((user) => ({
+        id: user.id,
+        name: user.name,
+        avatarUrl: user.avatar_url,
+        isAdmin: user.is_admin,
+        lastSeenAt: user.last_seen_at,
+        team: user.team_id
+          ? (() => {
+              const team = (teamsResult.data ?? []).find(
+                (candidate) => candidate.id === user.team_id,
+              );
+              return team ? { name: team.name, color: team.color_hex } : null;
+            })()
+          : null,
+      }))}
+      packing={{
+        presetItems: packingPresetItems,
+        states: packingStatesResult.error ? [] : (packingStatesResult.data ?? []),
+        personalItems: packingPersonalItemsResult.error
+          ? []
+          : (packingPersonalItemsResult.data ?? []),
+        isReadOnly: trip.status === "closed",
+      }}
     />
   );
 }

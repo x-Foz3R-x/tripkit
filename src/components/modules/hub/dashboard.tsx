@@ -19,16 +19,22 @@ import {
 } from "lucide-react";
 import { WelcomeCard } from "~/components/modules/hub/welcome-card";
 import { PackingWidget } from "~/components/modules/hub/packing-widget";
+import {
+  ParticipantsWidget,
+  type DashboardParticipant,
+} from "~/components/modules/hub/participants-widget";
+import { GameplayWidget } from "~/components/modules/hub/gameplay-widget";
 import type { DashboardInsights } from "~/lib/server/dashboard";
 import type { DashboardWidgetKey, TripModules } from "~/lib/trip-config";
 import { formatFinanceAmount, type FinanceMode } from "~/lib/finances";
 import { cn } from "~/lib/utils";
+import type { PackingPresetItem } from "~/lib/packing";
+import type { Database } from "~/types/database";
 
 const HALF_WIDGETS = new Set<DashboardWidgetKey>([
   "dates",
   "shopping",
   "finances",
-  "scoreboard",
   "quests",
   "polls",
   "wheel",
@@ -49,6 +55,8 @@ export function Dashboard({
   financeMode,
   dashboardWidgets,
   insights,
+  packing,
+  participants,
 }: {
   participant: { id: string; name: string; avatarUrl?: string | null };
   tripName: string;
@@ -64,6 +72,13 @@ export function Dashboard({
   financeMode: FinanceMode;
   dashboardWidgets: DashboardWidgetKey[];
   insights: DashboardInsights;
+  participants: DashboardParticipant[];
+  packing: {
+    presetItems: PackingPresetItem[];
+    states: Array<{ item_key: string; is_checked: boolean; is_hidden: boolean }>;
+    personalItems: Database["public"]["Tables"]["packing_personal_items"]["Row"][];
+    isReadOnly: boolean;
+  };
 }) {
   const mapQuery = destinationAddress ?? destinationName;
   const mapUrl =
@@ -76,7 +91,9 @@ export function Dashboard({
   const visibleWidgets = dashboardWidgets.filter((widget) => {
     if (widget === "destination") return Boolean(mapQuery);
     if (widget === "dates") return Boolean(dateLabel);
-    if (widget === "playlist") return modules.playlist;
+    if (widget === "playlist") return playlists.length > 0;
+    if (widget === "packing") return true;
+    if (widget === "participants") return participants.length > 0;
     if (widget === "polls" || widget === "wheel") return modules.scoreboard;
     return modules[widget];
   });
@@ -154,7 +171,7 @@ export function Dashboard({
                   className="bg-theme-card border-theme-border col-span-2 flex min-h-36 flex-col justify-between rounded-2xl border p-4 transition active:scale-99"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <WidgetLabel icon={Clock3}>Najbliżej w planie</WidgetLabel>
+                    <WidgetLabel icon={Clock3}>Plan na dziś</WidgetLabel>
                     <ChevronRight className="text-theme-muted" size={18} />
                   </div>
                   {next ? (
@@ -173,17 +190,17 @@ export function Dashboard({
                     </div>
                   ) : (
                     <div className="mt-5">
-                      <p className="text-theme-text font-bold">Plan jest jeszcze pusty</p>
+                      <p className="text-theme-text font-bold">Dzisiaj bez planu</p>
                       <p className="text-theme-muted mt-1 text-xs">
                         {isAdmin
-                          ? "Dodaj pierwszy punkt harmonogramu."
-                          : "Bez spiny — na razie spontan."}
+                          ? "Możesz dodać punkt na dzisiaj."
+                          : "Na dziś nie wpisano żadnego punktu."}
                       </p>
                     </div>
                   )}
                   {insights.schedule.todayCount > 1 && (
                     <p className="text-theme-primary mt-3 text-[10px] font-bold tracking-wider uppercase">
-                      Dzisiaj jeszcze {insights.schedule.todayCount} punkty
+                      Dzisiaj: {insights.schedule.todayCount} punkty
                     </p>
                   )}
                 </Link>
@@ -243,25 +260,7 @@ export function Dashboard({
             }
 
             if (widget === "scoreboard") {
-              const game = insights.scoreboard;
-              return (
-                <CompactWidget
-                  key={widget}
-                  href={`/t/${urlKey}/scoreboard`}
-                  icon={game.leader ? Trophy : Sparkles}
-                  label="Rozgrywka"
-                  value={game.leader ? game.leader.name : "Start"}
-                  detail={
-                    game.leader
-                      ? `${game.leader.score} pkt · ${game.activeChallenges} wyzwań`
-                      : game.openPolls > 0
-                        ? `${game.openPolls} aktywne głosowania`
-                        : "Czeka na pierwszą rundę"
-                  }
-                  color={game.leader?.color ?? undefined}
-                  wide={isWideCompact}
-                />
-              );
+              return <GameplayWidget key={widget} insight={insights.scoreboard} />;
             }
 
             if (widget === "quests") {
@@ -269,7 +268,7 @@ export function Dashboard({
               return (
                 <CompactWidget
                   key={widget}
-                  href={`/t/${urlKey}/scoreboard`}
+                  href={`/t/${urlKey}/gameplay?view=challenges`}
                   icon={Sparkles}
                   label="Wyzwania"
                   value={count === 0 ? "Cisza" : String(count)}
@@ -290,7 +289,7 @@ export function Dashboard({
               return (
                 <CompactWidget
                   key={widget}
-                  href={`/t/${urlKey}/scoreboard`}
+                  href={`/t/${urlKey}/gameplay?view=polls`}
                   icon={Vote}
                   label="Głosowania"
                   value={count === 0 ? "Spokój" : String(count)}
@@ -304,7 +303,7 @@ export function Dashboard({
               return (
                 <CompactWidget
                   key={widget}
-                  href={`/t/${urlKey}/scoreboard`}
+                  href={`/t/${urlKey}/gameplay?view=wheel`}
                   icon={Dices}
                   label="Koło fortuny"
                   value="Losuj"
@@ -315,11 +314,7 @@ export function Dashboard({
             }
 
             if (widget === "packing") {
-              return (
-                <div key={widget} className="col-span-2">
-                  <PackingWidget />
-                </div>
-              );
+              return <PackingWidget key={widget} {...packing} />;
             }
 
             if (widget === "playlist") {
@@ -350,7 +345,7 @@ export function Dashboard({
                       <p className="text-theme-muted mt-1 text-xs">
                         {isAdmin
                           ? "Dodaj pierwszą playlistę w ustawieniach."
-                          : "Administrator nie dodał jeszcze playlisty."}
+                          : "Zarządca nie dodał jeszcze playlisty."}
                       </p>
                       {isAdmin && (
                         <Link
@@ -368,6 +363,17 @@ export function Dashboard({
                     </p>
                   )}
                 </section>
+              );
+            }
+
+            if (widget === "participants") {
+              return (
+                <ParticipantsWidget
+                  key={widget}
+                  participants={participants}
+                  currentParticipantId={participant.id}
+                  nowTimestamp={Date.now()}
+                />
               );
             }
 

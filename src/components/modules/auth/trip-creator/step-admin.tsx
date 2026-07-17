@@ -62,7 +62,7 @@ export function StepAdmin({ data, setData, onNext, onBack }: Props) {
           </InputOTPGroup>
         </InputOTP>
         <p className="text-theme-muted flex items-center gap-1.5 text-[11px]">
-          <ShieldCheck size={14} /> Administratorzy będą mogli go później przypomnieć.
+          <ShieldCheck size={14} /> Zarządcy będą mogli go później przypomnieć.
         </p>
       </div>
 

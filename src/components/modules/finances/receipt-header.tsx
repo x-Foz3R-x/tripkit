@@ -9,7 +9,7 @@ interface ReceiptHeaderProps {
   activeUserName: string;
   financeMode: FinanceMode;
   isEmpty: boolean;
-  onAddExpense: () => void;
+  onAddExpense?: () => void;
 }
 
 export const ReceiptHeader = memo(function ReceiptHeader({
@@ -49,13 +49,15 @@ export const ReceiptHeader = memo(function ReceiptHeader({
         </dd>
       </dl>
 
-      <button
-        type="button"
-        onClick={onAddExpense}
-        className="border-receipt-ink text-receipt-ink active:bg-receipt-ink/6 mt-4 min-h-11 w-full border-y border-dashed text-[11px] font-black tracking-[0.14em] uppercase transition"
-      >
-        {isEmpty ? "+ Dodaj pierwszy wydatek" : "+ Dopisz wydatek"}
-      </button>
+      {onAddExpense && (
+        <button
+          type="button"
+          onClick={onAddExpense}
+          className="border-receipt-ink text-receipt-ink active:bg-receipt-ink/6 mt-4 min-h-11 w-full border-y border-dashed text-[11px] font-black tracking-[0.14em] uppercase transition"
+        >
+          {isEmpty ? "+ Dodaj pierwszy wydatek" : "+ Dopisz wydatek"}
+        </button>
+      )}
     </header>
   );
 });

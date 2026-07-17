@@ -33,6 +33,7 @@ interface ReceiptPaymentSectionProps {
   relationalTransactions: Transaction[];
   optimizedTransactions: Transaction[];
   onDataChanged: () => void;
+  readOnly: boolean;
 }
 
 export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
@@ -47,6 +48,7 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
   relationalTransactions,
   optimizedTransactions,
   onDataChanged,
+  readOnly,
 }: ReceiptPaymentSectionProps) {
   const { urlKey } = useTripRoute();
   const [selectedDebt, setSelectedDebt] = useState<Transaction | null>(null);
@@ -181,24 +183,26 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
                         {money(Number(settlement.amount), true)}
                       </span>
                     </div>
-                    <div className="mt-2 flex gap-2">
-                      <button
-                        type="button"
-                        disabled={isConfirming || isRejecting}
-                        onClick={() => void handleSettlementDecision(settlement.id, "confirmed")}
-                        className="bg-receipt-ink text-receipt-paper min-h-11 flex-1 px-3 text-[10px] font-black uppercase disabled:opacity-40"
-                      >
-                        {isConfirming ? "Zapisywanie…" : "Potwierdź"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={isConfirming || isRejecting}
-                        onClick={() => void handleSettlementDecision(settlement.id, "rejected")}
-                        className="border-receipt-line text-receipt-muted min-h-11 border px-3 text-[10px] font-bold uppercase disabled:opacity-40"
-                      >
-                        {isRejecting ? "Zapisywanie…" : "Nie dotarł"}
-                      </button>
-                    </div>
+                    {!readOnly && (
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          type="button"
+                          disabled={isConfirming || isRejecting}
+                          onClick={() => void handleSettlementDecision(settlement.id, "confirmed")}
+                          className="bg-receipt-ink text-receipt-paper min-h-11 flex-1 px-3 text-[10px] font-black uppercase disabled:opacity-40"
+                        >
+                          {isConfirming ? "Zapisywanie…" : "Potwierdź"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isConfirming || isRejecting}
+                          onClick={() => void handleSettlementDecision(settlement.id, "rejected")}
+                          className="border-receipt-line text-receipt-muted min-h-11 border px-3 text-[10px] font-bold uppercase disabled:opacity-40"
+                        >
+                          {isRejecting ? "Zapisywanie…" : "Nie dotarł"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -250,16 +254,18 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
                               <span className="text-receipt-stamp text-sm font-black">
                                 {money(debt.amount, true)}
                               </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActionError(null);
-                                  setSelectedDebt(debt);
-                                }}
-                                className="border-receipt-ink text-receipt-ink min-h-10 border-b border-dotted px-1 text-[10px] font-black uppercase"
-                              >
-                                Przelej
-                              </button>
+                              {!readOnly && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActionError(null);
+                                    setSelectedDebt(debt);
+                                  }}
+                                  className="border-receipt-ink text-receipt-ink min-h-10 border-b border-dotted px-1 text-[10px] font-black uppercase"
+                                >
+                                  Przelej
+                                </button>
+                              )}
                             </div>
                           </div>
                         )}

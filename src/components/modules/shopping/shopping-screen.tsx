@@ -20,9 +20,6 @@ import { cn } from "~/lib/utils";
 
 type ShoppingItem = Database["public"]["Tables"]["shopping_list"]["Row"];
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name" | "avatar_url">;
-type RealtimeStatus = "connecting" | "live" | "fallback";
-type PresenceMode = "viewing" | "typing";
-type PresencePayload = { userId?: string; mode?: PresenceMode };
 
 export function ShoppingScreen({
   initialItems,
@@ -31,7 +28,7 @@ export function ShoppingScreen({
   initialItems: ShoppingItem[];
   initialUsers: User[];
 }) {
-  const { modules, tripId, urlKey, userId: activeUserId } = useTripRoute();
+  const { modules, tripId, urlKey, userId: activeUserId, isClosed } = useTripRoute();
   const [items, setItems] = useState(initialItems);
   const [itemName, setItemName] = useState("");
   const [forUsers, setForUsers] = useState<string[]>([]);
@@ -43,12 +40,7 @@ export function ShoppingScreen({
   const [audienceError, setAudienceError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
-  const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>("connecting");
-  const [presenceModes, setPresenceModes] = useState<Record<string, PresenceMode>>(
-    activeUserId ? { [activeUserId]: "viewing" } : {},
-  );
   const presenceChannel = useRef<RealtimeChannel | null>(null);
-  const ownPresenceMode = useRef<PresenceMode>("viewing");
 
   const upsertItem = useCallback((nextItem: ShoppingItem) => {
     setItems((current) => {
@@ -79,115 +71,44 @@ export function ShoppingScreen({
     const supabase = createBrowserSupabaseClient();
     const channel = supabase
       .channel(`shopping:${tripId}`, {
-        config: { presence: { key: activeUserId } },
+        config: {
+          broadcast: { self: false, ack: false },
+        },
       })
-      .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState() as Record<string, PresencePayload[]>;
-        const nextModes: Record<string, PresenceMode> = {};
-        Object.values(state)
-          .flat()
-          .forEach((presence) => {
-            if (!presence.userId) return;
-            const mode = presence.mode === "typing" ? "typing" : "viewing";
-            if (mode === "typing" || !nextModes[presence.userId]) {
-              nextModes[presence.userId] = mode;
-            }
-          });
-        if (document.visibilityState === "visible") {
-          nextModes[activeUserId] ??= "viewing";
-        }
-        setPresenceModes(nextModes);
+      .on("broadcast", { event: "invalidate" }, () => {
+        void refreshItems();
       })
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "shopping_list",
-          filter: `trip_id=eq.${tripId}`,
-        },
-        (payload) => upsertItem(payload.new as ShoppingItem),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "shopping_list",
-          filter: `trip_id=eq.${tripId}`,
-        },
-        (payload) => upsertItem(payload.new as ShoppingItem),
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "shopping_list",
-          filter: `trip_id=eq.${tripId}`,
-        },
-        (payload) => removeItem((payload.old as Partial<ShoppingItem>).id ?? ""),
-      )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") {
-          setRealtimeStatus("live");
-          if (document.visibilityState === "visible") {
-            ownPresenceMode.current = "viewing";
-            void channel.track({
-              userId: activeUserId,
-              mode: "viewing",
-              joinedAt: new Date().toISOString(),
-            });
-          }
-        }
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-          setRealtimeStatus("fallback");
-          setPresenceModes({ [activeUserId]: "viewing" });
+          void refreshItems();
         }
       });
     presenceChannel.current = channel;
 
     const interval = window.setInterval(() => void refreshItems(), 15_000);
     const refreshOnFocus = () => void refreshItems();
-    const updateVisibility = () => {
-      if (document.visibilityState === "visible") {
-        void refreshItems();
-        ownPresenceMode.current = "viewing";
-        void channel.track({
-          userId: activeUserId,
-          mode: "viewing",
-          joinedAt: new Date().toISOString(),
-        });
-      } else {
-        void channel.untrack();
-      }
-    };
     window.addEventListener("focus", refreshOnFocus);
-    document.addEventListener("visibilitychange", updateVisibility);
 
     return () => {
       window.clearInterval(interval);
       window.removeEventListener("focus", refreshOnFocus);
-      document.removeEventListener("visibilitychange", updateVisibility);
       presenceChannel.current = null;
-      void channel.untrack();
       void supabase.removeChannel(channel);
     };
-  }, [activeUserId, refreshItems, removeItem, tripId, upsertItem]);
+  }, [activeUserId, refreshItems, tripId]);
+
+  const broadcastInvalidate = useCallback(() => {
+    void presenceChannel.current?.send({
+      type: "broadcast",
+      event: "invalidate",
+      payload: { at: Date.now() },
+    });
+  }, []);
 
   const openItems = items.filter((item) => !item.is_completed).length;
   const selectedUsers = useMemo(
     () => initialUsers.filter((user) => forUsers.includes(user.id)),
     [forUsers, initialUsers],
-  );
-  const onlineUsers = useMemo(
-    () =>
-      initialUsers
-        .filter((user) => Boolean(presenceModes[user.id]))
-        .sort(
-          (first, second) => Number(second.id === activeUserId) - Number(first.id === activeUserId),
-        ),
-    [activeUserId, initialUsers, presenceModes],
   );
   const audiencePresets = useMemo(() => {
     const presets = new Map<string, string[]>();
@@ -218,14 +139,8 @@ export function ShoppingScreen({
     }
 
     upsertItem(result.item);
+    broadcastInvalidate();
     setItemName("");
-    updateOwnPresence("viewing");
-  };
-
-  const updateOwnPresence = (mode: PresenceMode) => {
-    if (ownPresenceMode.current === mode) return;
-    ownPresenceMode.current = mode;
-    void presenceChannel.current?.track({ userId: activeUserId, mode });
   };
 
   const openNewAudience = () => {
@@ -275,6 +190,7 @@ export function ShoppingScreen({
     }
 
     upsertItem(result.item);
+    broadcastInvalidate();
     setIsAudienceOpen(false);
     setEditingAudienceItem(null);
   };
@@ -301,10 +217,10 @@ export function ShoppingScreen({
   }
 
   return (
-    <div className="animate-fade-in -mx-4 -mt-4">
-      <section className="shopping-notebook relative min-h-[calc(100dvh-6.5rem-env(safe-area-inset-bottom))] overflow-hidden pb-[calc(6.5rem+env(safe-area-inset-bottom))] shadow-none">
+    <div className="animate-fade-in -mx-4 -mt-[calc(1rem+env(safe-area-inset-top))] -mb-[calc(8.5rem+env(safe-area-inset-bottom))]">
+      <section className="shopping-notebook relative min-h-dvh overflow-hidden pt-[env(safe-area-inset-top)] pb-[calc(8.5rem+env(safe-area-inset-bottom))] shadow-none">
         <span className="bg-theme-primary/45 absolute inset-y-0 left-6 w-px" />
-        <div className="absolute top-4 left-0 flex w-full justify-around px-8">
+        <div className="absolute top-[calc(env(safe-area-inset-top)+1rem)] left-0 flex w-full justify-around px-8">
           {[0, 1, 2, 3, 4, 5].map((hole) => (
             <span
               key={hole}
@@ -316,73 +232,60 @@ export function ShoppingScreen({
         <header className="px-5 pt-12 pb-4 pl-11">
           <h1 className="font-heading text-theme-text text-3xl font-semibold">Lista zakupów</h1>
 
-          <div className="mt-3 flex min-h-8 items-center justify-between gap-3">
-            <div className="flex shrink-0 items-center gap-3 text-xs">
-              <span className="text-theme-text font-bold">{openItems} do kupienia</span>
-            </div>
-            {realtimeStatus === "live" && (
-              <div className="flex min-w-0 items-center justify-end gap-2">
-                <PresenceAvatars users={onlineUsers} />
-                <p className="text-theme-muted truncate text-[10px]">
-                  {formatPresenceText(onlineUsers, presenceModes, activeUserId)}
-                </p>
-              </div>
-            )}
+          <div className="mt-3 flex min-h-8 items-center text-xs">
+            <span className="text-theme-text font-bold">{openItems} do kupienia</span>
           </div>
         </header>
 
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void addItem();
-          }}
-          className={cn(
-            "border-theme-border/55 border-t px-5 py-3 pl-11",
-            openItems > 0 && "border-b",
-          )}
-        >
-          <div className="border-theme-border/80 bg-theme-bg/18 divide-theme-border/70 divide-y overflow-hidden rounded-xl border">
-            <div className="flex min-h-12 items-center pl-3">
-              <input
-                value={itemName}
-                onChange={(event) => {
-                  setItemName(event.target.value);
-                  updateOwnPresence(event.target.value ? "typing" : "viewing");
-                }}
-                onFocus={() => updateOwnPresence(itemName ? "typing" : "viewing")}
-                onBlur={() => updateOwnPresence("viewing")}
-                placeholder="Dopisz rzecz…"
-                autoComplete="off"
-                className="font-note text-theme-text placeholder:text-theme-muted/65 min-w-0 flex-1 bg-transparent text-lg leading-none outline-hidden"
-              />
+        {!isClosed && (
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              void addItem();
+            }}
+            className={cn(
+              "border-theme-border/55 border-t px-5 py-3 pl-11",
+              openItems > 0 && "border-b",
+            )}
+          >
+            <div className="border-theme-border/80 bg-theme-bg/18 divide-theme-border/70 divide-y overflow-hidden rounded-xl border">
+              <div className="flex min-h-12 items-center pl-3">
+                <input
+                  value={itemName}
+                  onChange={(event) => setItemName(event.target.value)}
+                  placeholder="Dopisz rzecz…"
+                  autoComplete="off"
+                  className="font-note text-theme-text placeholder:text-theme-muted/65 min-w-0 flex-1 bg-transparent text-lg leading-none outline-hidden"
+                />
+                <button
+                  type="submit"
+                  disabled={!itemName.trim() || isAdding}
+                  className="text-theme-primary hover:bg-theme-primary/7 flex h-12 w-12 shrink-0 items-center justify-center disabled:opacity-25"
+                  aria-label="Dodaj rzecz do listy"
+                >
+                  <Plus size={18} />
+                </button>
+              </div>
               <button
-                type="submit"
-                disabled={!itemName.trim() || isAdding}
-                className="text-theme-primary hover:bg-theme-primary/7 flex h-12 w-12 shrink-0 items-center justify-center disabled:opacity-25"
-                aria-label="Dodaj rzecz do listy"
+                type="button"
+                onClick={openNewAudience}
+                className="hover:bg-theme-primary/5 flex min-h-10 w-full items-center gap-2 px-3 text-left"
               >
-                <Plus size={18} />
+                <ReceiptText className="text-theme-primary shrink-0" size={13} />
+                <span className="text-theme-muted min-w-0 flex-1 truncate text-[10px]">
+                  Rachunek:{" "}
+                  <span className="text-theme-text font-bold">
+                    {forUsers.length === 0
+                      ? "wspólny"
+                      : `osobny · ${formatAudienceNames(selectedUsers)}`}
+                  </span>
+                </span>
+                <ChevronRight className="text-theme-muted shrink-0" size={15} />
               </button>
             </div>
-            <button
-              type="button"
-              onClick={openNewAudience}
-              className="hover:bg-theme-primary/5 flex min-h-10 w-full items-center gap-2 px-3 text-left"
-            >
-              <ReceiptText className="text-theme-primary shrink-0" size={13} />
-              <span className="text-theme-muted min-w-0 flex-1 truncate text-[10px]">
-                Rachunek:{" "}
-                <span className="text-theme-text font-bold">
-                  {forUsers.length === 0
-                    ? "wspólny"
-                    : `osobny · ${formatAudienceNames(selectedUsers)}`}
-                </span>
-              </span>
-              <ChevronRight className="text-theme-muted shrink-0" size={15} />
-            </button>
-          </div>
-          {addError && <p className="text-theme-danger mt-1 text-xs font-bold">{addError}</p>}
-        </form>
+            {addError && <p className="text-theme-danger mt-1 text-xs font-bold">{addError}</p>}
+          </form>
+        )}
 
         <ShoppingList
           items={items}
@@ -393,6 +296,8 @@ export function ShoppingScreen({
           onItemChanged={upsertItem}
           onItemDeleted={removeItem}
           onEditAudience={openItemAudience}
+          onMutationCommitted={broadcastInvalidate}
+          readOnly={isClosed}
         />
       </section>
 
@@ -492,42 +397,6 @@ export function ShoppingScreen({
       </ResponsiveDialog>
     </div>
   );
-}
-
-function PresenceAvatars({ users }: { users: User[] }) {
-  return (
-    <div className="flex shrink-0 -space-x-1.5">
-      {users.slice(0, 2).map((user) => (
-        <Avatar
-          key={user.id}
-          user={{ id: user.id, name: user.name, avatarUrl: user.avatar_url }}
-          className="ring-theme-card h-5 w-5 text-[8px] ring-2"
-        />
-      ))}
-    </div>
-  );
-}
-
-function formatPresenceText(
-  users: User[],
-  modes: Record<string, PresenceMode>,
-  activeUserId: string,
-) {
-  const typingUsers = users.filter((user) => modes[user.id] === "typing");
-  const otherTypingUsers = typingUsers.filter((user) => user.id !== activeUserId);
-  if (modes[activeUserId] === "typing") {
-    if (otherTypingUsers.length > 0) {
-      return `Dopisujesz z ${otherTypingUsers[0]!.name}`;
-    }
-    return "Dopisujesz…";
-  }
-  if (otherTypingUsers.length === 1) return `${otherTypingUsers[0]!.name} właśnie dopisuje…`;
-  if (otherTypingUsers.length > 1) return `${otherTypingUsers.length} osoby dopisują…`;
-
-  const others = users.filter((user) => user.id !== activeUserId);
-  if (others.length === 0) return "Tylko Ty";
-  if (others.length === 1) return `W notatniku: Ty i ${others[0]!.name}`;
-  return `W notatniku: Ty +${others.length}`;
 }
 
 function formatAudienceNames(users: User[]) {

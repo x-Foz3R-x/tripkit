@@ -18,6 +18,8 @@ import { useTripRoute } from "~/providers/trip-route-provider";
 import type { TripNavigationKey } from "~/lib/trip-config";
 import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { MoreMenu } from "~/components/more-menu";
+import { motion } from "framer-motion";
+import { MOTION_TRANSITIONS } from "~/lib/motion";
 
 const MODULE_NAV_ITEMS: Record<
   TripNavigationKey,
@@ -29,7 +31,7 @@ const MODULE_NAV_ITEMS: Record<
 > = {
   schedule: { name: "Plan", suffix: "/schedule", icon: CalendarDays },
   shopping: { name: "Zakupy", suffix: "/shopping", icon: ShoppingBasket },
-  scoreboard: { name: "Rozgrywka", suffix: "/scoreboard", icon: Gamepad2 },
+  scoreboard: { name: "Rozgrywka", suffix: "/gameplay", icon: Gamepad2 },
   finances: { name: "Rozliczenia", suffix: "/finances", icon: ReceiptText },
 };
 
@@ -46,15 +48,21 @@ function NavItemContent({
   const isHighlighted = isActive || pending;
 
   return (
-    <span
+    <motion.span
+      whileTap={{ scale: 0.94 }}
       className={cn(
-        "mx-0.5 flex min-h-14 w-auto flex-col items-center justify-center gap-0.5 rounded-full px-1 transition-all duration-200",
-        isHighlighted &&
-          "bg-theme-primary/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_4px_16px_rgba(0,0,0,0.12)]",
+        "relative mx-0.5 flex min-h-14 w-auto flex-col items-center justify-center gap-0.5 rounded-full px-1",
         isHighlighted ? "text-theme-primary" : "text-theme-muted hover:text-theme-text",
       )}
     >
-      <span className="flex h-6 items-center justify-center">
+      {isHighlighted && (
+        <motion.span
+          layoutId="bottom-nav-active"
+          transition={MOTION_TRANSITIONS.spring}
+          className="bg-theme-primary/12 absolute inset-0 rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_4px_16px_rgba(0,0,0,0.12)]"
+        />
+      )}
+      <span className="relative flex h-6 items-center justify-center">
         {pending ? (
           <LoaderCircle className="size-5.5 animate-spin" strokeWidth={2.5} />
         ) : (
@@ -63,13 +71,13 @@ function NavItemContent({
       </span>
       <span
         className={cn(
-          "max-w-full truncate text-[9px] tracking-normal",
+          "relative max-w-full truncate text-[9px] tracking-normal",
           isHighlighted ? "font-bold" : "font-medium",
         )}
       >
         {name}
       </span>
-    </span>
+    </motion.span>
   );
 }
 
@@ -113,28 +121,34 @@ export function BottomNav() {
           aria-label="Otwórz Więcej"
           className="min-w-0 flex-1"
         >
-          <span
+          <motion.span
+            whileTap={{ scale: 0.94 }}
             className={cn(
-              "mx-0.5 flex min-h-14 w-auto flex-col items-center justify-center gap-0.5 rounded-full px-1 transition-all duration-200",
-              (isMoreOpen || moreIsActive) &&
-                "bg-theme-primary/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_4px_16px_rgba(0,0,0,0.12)]",
+              "relative mx-0.5 flex min-h-14 w-auto flex-col items-center justify-center gap-0.5 rounded-full px-1",
               isMoreOpen || moreIsActive
                 ? "text-theme-primary"
                 : "text-theme-muted hover:text-theme-text",
             )}
           >
-            <span className="flex h-6 items-center justify-center">
+            {(isMoreOpen || moreIsActive) && (
+              <motion.span
+                layoutId="bottom-nav-active"
+                transition={MOTION_TRANSITIONS.spring}
+                className="bg-theme-primary/12 absolute inset-0 rounded-full shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_4px_16px_rgba(0,0,0,0.12)]"
+              />
+            )}
+            <span className="relative flex h-6 items-center justify-center">
               <Menu className="size-5.5" strokeWidth={isMoreOpen || moreIsActive ? 2.5 : 2} />
             </span>
             <span
               className={cn(
-                "truncate text-[9px] tracking-wide",
+                "relative truncate text-[9px] tracking-wide",
                 isMoreOpen || moreIsActive ? "font-bold" : "font-medium",
               )}
             >
               Więcej
             </span>
-          </span>
+          </motion.span>
         </button>
       </div>
 

@@ -34,6 +34,8 @@ export const ShoppingList = memo(function ShoppingList({
   onItemChanged,
   onItemDeleted,
   onEditAudience,
+  onMutationCommitted,
+  readOnly,
 }: {
   items: ShoppingItem[];
   users: User[];
@@ -43,6 +45,8 @@ export const ShoppingList = memo(function ShoppingList({
   onItemChanged: (item: ShoppingItem) => void;
   onItemDeleted: (itemId: string) => void;
   onEditAudience: (item: ShoppingItem) => void;
+  onMutationCommitted: () => void;
+  readOnly: boolean;
 }) {
   const { urlKey } = useTripRoute();
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
@@ -69,7 +73,7 @@ export const ShoppingList = memo(function ShoppingList({
   };
 
   const toggle = async (item: ShoppingItem) => {
-    if (loadingIds.has(item.id)) return;
+    if (readOnly || loadingIds.has(item.id)) return;
     const optimistic: ShoppingItem = {
       ...item,
       is_completed: !item.is_completed,
@@ -88,15 +92,17 @@ export const ShoppingList = memo(function ShoppingList({
     });
     setLoading(item.id, false);
 
-    if (result.ok) onItemChanged(result.item);
-    else {
+    if (result.ok) {
+      onItemChanged(result.item);
+      onMutationCommitted();
+    } else {
       onItemChanged(item);
       setActionError(result.error);
     }
   };
 
   const remove = async (item: ShoppingItem) => {
-    if (loadingIds.has(item.id)) return;
+    if (readOnly || loadingIds.has(item.id)) return;
     if (!window.confirm(`Usunąć „${item.item_name}” z listy zakupów?`)) return;
 
     onOptionsItemChange(null);
@@ -108,11 +114,13 @@ export const ShoppingList = memo(function ShoppingList({
     if (!result.ok) {
       onItemChanged(item);
       setActionError(result.error);
+    } else {
+      onMutationCommitted();
     }
   };
 
   const clearCompleted = async () => {
-    if (completedItems.length === 0 || loadingIds.size > 0) return;
+    if (readOnly || completedItems.length === 0 || loadingIds.size > 0) return;
     if (!window.confirm(`Usunąć ${completedItems.length} skreślonych pozycji?`)) return;
 
     completedItems.forEach((item) => onItemDeleted(item.id));
@@ -121,6 +129,8 @@ export const ShoppingList = memo(function ShoppingList({
     if (!result.ok) {
       completedItems.forEach(onItemChanged);
       setActionError(result.error);
+    } else {
+      onMutationCommitted();
     }
   };
 
@@ -184,7 +194,7 @@ export const ShoppingList = memo(function ShoppingList({
                       <button
                         type="button"
                         onClick={() => void toggle(item)}
-                        disabled={isLoading}
+                        disabled={isLoading || readOnly}
                         className="text-theme-muted hover:text-theme-primary flex h-10 w-8 shrink-0 items-center justify-center transition"
                         aria-label={
                           item.is_completed
@@ -203,7 +213,7 @@ export const ShoppingList = memo(function ShoppingList({
                         <button
                           type="button"
                           onClick={() => void toggle(item)}
-                          disabled={isLoading}
+                          disabled={isLoading || readOnly}
                           className="block min-h-8 max-w-full py-1 text-left"
                         >
                           <span
@@ -218,15 +228,17 @@ export const ShoppingList = memo(function ShoppingList({
                         </button>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => onOptionsItemChange(item.id)}
-                        disabled={isLoading}
-                        className="text-theme-muted/70 hover:text-theme-text flex size-10 shrink-0 items-center justify-center rounded-full"
-                        aria-label={`Więcej opcji dla ${item.item_name}`}
-                      >
-                        <MoreHorizontal size={19} />
-                      </button>
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          onClick={() => onOptionsItemChange(item.id)}
+                          disabled={isLoading}
+                          className="text-theme-muted/70 hover:text-theme-text flex size-10 shrink-0 items-center justify-center rounded-full"
+                          aria-label={`Więcej opcji dla ${item.item_name}`}
+                        >
+                          <MoreHorizontal size={19} />
+                        </button>
+                      )}
                     </article>
                   );
                 })}
@@ -251,7 +263,7 @@ export const ShoppingList = memo(function ShoppingList({
             {showCompleted ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
             {showCompleted ? "Ukryj skreślone" : `Pokaż skreślone (${completedItems.length})`}
           </button>
-          {showCompleted && (
+          {showCompleted && !readOnly && (
             <button
               type="button"
               onClick={() => void clearCompleted()}

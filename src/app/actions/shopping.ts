@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getTripActionContext } from "~/lib/server/trip-action-context";
+import { closedTripMutationError, getTripActionContext } from "~/lib/server/trip-action-context";
 import type { Database } from "~/types/database";
 
 export type ShoppingItem = Database["public"]["Tables"]["shopping_list"]["Row"];
@@ -42,6 +42,8 @@ export async function createShoppingItemAction(input: {
 
   const context = await getTripActionContext(parsed.data.tripKey);
   if (!context) return { ok: false, error: "Sesja wygasła. Wejdź ponownie do wyjazdu." };
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const forUsers = [...new Set(parsed.data.forUsers)];
   if (forUsers.length > 0) {
@@ -86,6 +88,8 @@ export async function toggleShoppingItemAction(input: {
 
   const context = await getTripActionContext(parsed.data.tripKey);
   if (!context) return { ok: false, error: "Sesja wygasła. Wejdź ponownie do wyjazdu." };
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const { data: item, error } = await context.supabase
     .from("shopping_list")
@@ -115,6 +119,8 @@ export async function updateShoppingAudienceAction(input: {
 
   const context = await getTripActionContext(parsed.data.tripKey);
   if (!context) return { ok: false, error: "Sesja wygasła. Wejdź ponownie do wyjazdu." };
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const requestedUsers = [...new Set(parsed.data.forUsers)];
   const { data: participants, error: participantsError } = await context.supabase
@@ -156,6 +162,8 @@ export async function deleteShoppingItemAction(input: {
 
   const context = await getTripActionContext(parsed.data.tripKey);
   if (!context) return { ok: false, error: "Sesja wygasła. Wejdź ponownie do wyjazdu." };
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const { error } = await context.supabase
     .from("shopping_list")
@@ -176,6 +184,8 @@ export async function clearCompletedShoppingItemsAction(input: {
 
   const context = await getTripActionContext(parsed.data.tripKey);
   if (!context) return { ok: false, error: "Sesja wygasła. Wejdź ponownie do wyjazdu." };
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const { error } = await context.supabase
     .from("shopping_list")

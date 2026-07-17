@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Flag, Plus, Sparkles, UsersRound, Vote } from "lucide-react";
+import { Check, ChevronDown, Flag, Plus, Sparkles, Trash2, UsersRound, Vote } from "lucide-react";
 import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -12,6 +12,7 @@ import {
   completeChallengeAction,
   createChallengeAction,
   createPollAction,
+  deletePollAction,
   voteInPollAction,
   type GameplayActionResult,
 } from "~/app/actions/gameplay";
@@ -44,6 +45,7 @@ export function GameHub({
   showPolls,
   allowTeams,
   usesPoints,
+  compactHeader = false,
 }: {
   challenges: Challenge[];
   challengeEntries: ChallengeEntry[];
@@ -60,14 +62,17 @@ export function GameHub({
   showPolls: boolean;
   allowTeams: boolean;
   usesPoints: boolean;
+  compactHeader?: boolean;
 }) {
   const router = useRouter();
-  const { urlKey } = useTripRoute();
+  const { urlKey, isClosed } = useTripRoute();
+  const canManage = isAdmin && !isClosed;
   const [tab, setTab] = useState<"challenges" | "polls">("challenges");
   const [dialog, setDialog] = useState<GameDialog>(null);
   const [processingKey, setProcessingKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const activeTab = showChallenges && showPolls ? tab : showChallenges ? "challenges" : "polls";
+  const canCreateActiveItem = !isClosed && (activeTab === "polls" || isAdmin);
 
   const runAction = async (key: string, action: () => Promise<GameplayActionResult>) => {
     setProcessingKey(key);
@@ -94,17 +99,25 @@ export function GameHub({
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-theme-primary text-[10px] font-bold tracking-[0.18em] uppercase">
-            {activeTab === "challenges" ? "Wyzwania" : "Głosowania"}
+      <div className="flex min-h-10 items-end justify-between gap-3">
+        {compactHeader ? (
+          <p className="text-theme-muted text-xs">
+            {activeTab === "challenges"
+              ? `${challenges.length} ${challenges.length === 1 ? "aktywne wyzwanie" : "aktywnych wyzwań"}`
+              : `${polls.length} ${polls.length === 1 ? "głosowanie" : "głosowań"}`}
           </p>
-          <h2 className="font-heading text-theme-text text-2xl font-semibold">
-            {activeTab === "challenges" ? "Zadania ekipy" : "Wspólne decyzje"}
-          </h2>
-        </div>
+        ) : (
+          <div>
+            <p className="text-theme-primary text-[10px] font-bold tracking-[0.18em] uppercase">
+              {activeTab === "challenges" ? "Wyzwania" : "Głosowania"}
+            </p>
+            <h2 className="font-heading text-theme-text text-2xl font-semibold">
+              {activeTab === "challenges" ? "Zadania ekipy" : "Wspólne decyzje"}
+            </h2>
+          </div>
+        )}
 
-        {isAdmin && (
+        {canCreateActiveItem && (
           <button
             type="button"
             onClick={() => {
@@ -161,7 +174,7 @@ export function GameHub({
                   ? allowTeams
                     ? "Dodaj pierwsze zadanie dla osoby albo drużyny."
                     : "Dodaj pierwsze zadanie dla uczestników."
-                  : "Administrator nie dodał jeszcze żadnego wyzwania."
+                  : "Zarządca nie dodał jeszcze żadnego wyzwania."
               }
             />
           ) : (
@@ -220,7 +233,7 @@ export function GameHub({
                             </div>
                             {entry.status === "completed" ? (
                               <Check className="text-theme-accent" size={18} />
-                            ) : isAdmin ? (
+                            ) : canManage ? (
                               <button
                                 type="button"
                                 disabled={processingKey === `complete:${entry.id}`}
@@ -242,7 +255,7 @@ export function GameHub({
                       </div>
                     )}
 
-                    {!ownEntry && (
+                    {!ownEntry && !isClosed && (
                       <Button
                         type="button"
                         variant="outline"
@@ -271,9 +284,9 @@ export function GameHub({
               icon={<Vote size={22} />}
               title="Cisza przed głosowaniem"
               description={
-                isAdmin
-                  ? "Zapytaj ekipę o plan, jedzenie albo kolejną aktywność."
-                  : "Gdy pojawi się wspólna decyzja, zagłosujesz tutaj."
+                isClosed
+                  ? "Na zakończonym wyjeździe głosowania są tylko do wglądu."
+                  : "Zapytaj ekipę o plan, jedzenie albo kolejną aktywność."
               }
             />
           ) : (
@@ -287,91 +300,121 @@ export function GameHub({
               );
 
               return (
-                <article
+                <details
                   key={poll.id}
-                  className="bg-theme-card border-theme-border rounded-2xl border p-4 shadow-xs"
+                  className="bg-theme-card border-theme-border group overflow-hidden rounded-2xl border shadow-xs"
                 >
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-theme-muted mb-1 text-[10px] font-bold tracking-wider uppercase">
-                        {poll.status === "open" ? "Głosowanie trwa" : "Głosowanie zamknięte"}
-                      </p>
-                      <h3 className="font-heading text-theme-text text-xl leading-tight font-semibold">
+                  <summary className="flex min-h-20 cursor-pointer list-none items-center gap-3 px-4 py-3">
+                    <span
+                      className={`size-2.5 shrink-0 rounded-full ${
+                        poll.status === "open" ? "bg-theme-accent" : "bg-theme-muted/40"
+                      }`}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="text-theme-muted block text-[9px] font-bold tracking-wider uppercase">
+                        {poll.status === "open" ? "Głosowanie trwa" : "Zamknięte"}
+                      </span>
+                      <strong className="font-heading text-theme-text mt-0.5 block truncate text-lg font-semibold">
                         {poll.question}
-                      </h3>
+                      </strong>
+                    </span>
+                    <span className="text-theme-muted shrink-0 text-[10px]">
+                      {totalVotes} {totalVotes === 1 ? "głos" : "głosów"}
+                    </span>
+                    <ChevronDown
+                      className="text-theme-muted shrink-0 transition group-open:rotate-180"
+                      size={17}
+                    />
+                  </summary>
+
+                  <div className="border-theme-border border-t p-4">
+                    <div className="flex flex-col gap-2">
+                      {options.map((option) => {
+                        const count =
+                          pollCounts.find((item) => item.optionId === option.id)?.count ?? 0;
+                        const percentage =
+                          totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+                        const isSelected = selectedOptionId === option.id;
+
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            disabled={
+                              isClosed ||
+                              poll.status !== "open" ||
+                              processingKey === `vote:${poll.id}:${option.id}`
+                            }
+                            onClick={() =>
+                              void runAction(`vote:${poll.id}:${option.id}`, () =>
+                                voteInPollAction({
+                                  tripKey: urlKey,
+                                  pollId: poll.id,
+                                  optionId: option.id,
+                                }),
+                              )
+                            }
+                            className={`relative overflow-hidden rounded-xl border px-3 py-3 text-left transition disabled:cursor-default ${
+                              isSelected
+                                ? "border-theme-primary text-theme-text"
+                                : "border-theme-border text-theme-muted"
+                            }`}
+                          >
+                            <span
+                              className="bg-theme-primary/10 absolute inset-y-0 left-0"
+                              style={{ width: `${percentage}%` }}
+                            />
+                            <span className="relative flex items-center justify-between gap-3 text-xs font-bold">
+                              <span className="flex min-w-0 items-center gap-2">
+                                {isSelected && (
+                                  <Check className="text-theme-primary shrink-0" size={14} />
+                                )}
+                                <span className="truncate">{option.label}</span>
+                              </span>
+                              <span className="shrink-0">
+                                {count} · {percentage}%
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
-                    <Vote className="text-theme-primary shrink-0" size={20} />
-                  </div>
 
-                  <div className="flex flex-col gap-2">
-                    {options.map((option) => {
-                      const count =
-                        pollCounts.find((item) => item.optionId === option.id)?.count ?? 0;
-                      const percentage =
-                        totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
-                      const isSelected = selectedOptionId === option.id;
-
-                      return (
+                    {canManage && (
+                      <div className="border-theme-border mt-3 flex items-center justify-end gap-4 border-t pt-3">
+                        {poll.status === "open" && (
+                          <button
+                            type="button"
+                            disabled={processingKey === `close:${poll.id}`}
+                            onClick={() =>
+                              void runAction(`close:${poll.id}`, () =>
+                                closePollAction({ tripKey: urlKey, pollId: poll.id }),
+                              )
+                            }
+                            className="text-theme-primary min-h-10 text-[10px] font-bold uppercase"
+                          >
+                            Zamknij
+                          </button>
+                        )}
                         <button
-                          key={option.id}
                           type="button"
-                          disabled={
-                            poll.status !== "open" ||
-                            processingKey === `vote:${poll.id}:${option.id}`
-                          }
-                          onClick={() =>
-                            void runAction(`vote:${poll.id}:${option.id}`, () =>
-                              voteInPollAction({
-                                tripKey: urlKey,
-                                pollId: poll.id,
-                                optionId: option.id,
-                              }),
-                            )
-                          }
-                          className={`relative overflow-hidden rounded-xl border px-3 py-3 text-left transition disabled:cursor-default ${
-                            isSelected
-                              ? "border-theme-primary text-theme-text"
-                              : "border-theme-border text-theme-muted"
-                          }`}
+                          disabled={processingKey === `delete:${poll.id}`}
+                          onClick={() => {
+                            if (!window.confirm("Usunąć to głosowanie wraz z oddanymi głosami?")) {
+                              return;
+                            }
+                            void runAction(`delete:${poll.id}`, () =>
+                              deletePollAction({ tripKey: urlKey, pollId: poll.id }),
+                            );
+                          }}
+                          className="text-theme-danger flex min-h-10 items-center gap-1.5 text-[10px] font-bold uppercase"
                         >
-                          <span
-                            className="bg-theme-primary/10 absolute inset-y-0 left-0"
-                            style={{ width: `${percentage}%` }}
-                          />
-                          <span className="relative flex items-center justify-between gap-3 text-xs font-bold">
-                            <span className="flex min-w-0 items-center gap-2">
-                              {isSelected && (
-                                <Check className="text-theme-primary shrink-0" size={14} />
-                              )}
-                              <span className="truncate">{option.label}</span>
-                            </span>
-                            <span className="shrink-0">
-                              {count} · {percentage}%
-                            </span>
-                          </span>
+                          <Trash2 size={14} /> Usuń
                         </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="text-theme-muted mt-3 flex items-center justify-between text-[10px]">
-                    <span>{totalVotes} oddanych głosów</span>
-                    {isAdmin && poll.status === "open" && (
-                      <button
-                        type="button"
-                        disabled={processingKey === `close:${poll.id}`}
-                        onClick={() =>
-                          void runAction(`close:${poll.id}`, () =>
-                            closePollAction({ tripKey: urlKey, pollId: poll.id }),
-                          )
-                        }
-                        className="text-theme-primary font-bold uppercase"
-                      >
-                        Zamknij
-                      </button>
+                      </div>
                     )}
                   </div>
-                </article>
+                </details>
               );
             })
           )}
@@ -379,7 +422,7 @@ export function GameHub({
       )}
 
       <ResponsiveDialog
-        isOpen={showChallenges && dialog === "challenge"}
+        isOpen={canManage && showChallenges && dialog === "challenge"}
         setIsOpen={(open) => setDialog(open ? "challenge" : null)}
         title="Nowe wyzwanie"
         description={
@@ -407,7 +450,7 @@ export function GameHub({
       </ResponsiveDialog>
 
       <ResponsiveDialog
-        isOpen={showPolls && dialog === "poll"}
+        isOpen={!isClosed && showPolls && dialog === "poll"}
         setIsOpen={(open) => setDialog(open ? "poll" : null)}
         title="Nowe głosowanie"
         description="Szybka decyzja dla całej ekipy, bez dokładania nowego modułu."

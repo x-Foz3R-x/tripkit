@@ -8,6 +8,8 @@ import { verifyPin } from "~/lib/server/pin";
 import { getTripSession, setTripSession } from "~/lib/server/trip-session";
 import { DASHBOARD_WIDGET_KEYS, TRIP_NAVIGATION_KEYS } from "~/lib/trip-config";
 import { parseFinanceMode } from "~/lib/finances";
+import { getTripActionContext } from "~/lib/server/trip-action-context";
+import { PACKING_PRESET_KEYS } from "~/lib/packing";
 
 export type TripFormState = {
   error: string | null;
@@ -68,6 +70,7 @@ const createTripSchema = tripDetailsSchema.and(
       )
       .max(20),
     memberAssignments: z.record(z.string(), z.string()),
+    packingPresets: z.array(z.enum(PACKING_PRESET_KEYS)).max(PACKING_PRESET_KEYS.length),
   }),
 );
 
@@ -90,6 +93,7 @@ const addParticipantSchema = z.object({
   tripKey: z.string().regex(/^[0-9a-f]{12}$/),
   name: z.string().trim().min(1).max(60),
   isAdmin: z.boolean(),
+  teamId: z.string().uuid().nullable(),
 });
 
 const updateParticipantSchema = addParticipantSchema.extend({
@@ -101,6 +105,22 @@ const deleteParticipantSchema = z.object({
   userId: z.string().uuid(),
 });
 
+const teamSchema = z.object({
+  tripKey: z.string().regex(/^[0-9a-f]{12}$/),
+  name: z.string().trim().min(1).max(60),
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+});
+
+const updateTeamSchema = teamSchema.extend({ teamId: z.string().uuid() });
+const deleteTeamSchema = z.object({
+  tripKey: z.string().regex(/^[0-9a-f]{12}$/),
+  teamId: z.string().uuid(),
+});
+const setTripStatusSchema = z.object({
+  tripKey: z.string().regex(/^[0-9a-f]{12}$/),
+  status: z.enum(["active", "closed"]),
+});
+
 export type CreateTripInput = z.infer<typeof createTripSchema>;
 export type UpdateTripSettingsInput = z.infer<typeof updateTripSettingsSchema>;
 export type UpdateParticipantProfileInput = z.infer<typeof updateParticipantProfileSchema>;
@@ -109,21 +129,20 @@ export type CreateTripResult = { ok: true; urlKey: string } | { ok: false; error
 export type UpdateTripSettingsResult = { ok: true } | { ok: false; error: string };
 export type UpdateParticipantProfileResult = { ok: true } | { ok: false; error: string };
 export type ParticipantMutationResult = { ok: true } | { ok: false; error: string };
+export type TeamMutationResult = { ok: true } | { ok: false; error: string };
 
 async function getAdminContext(tripKey: string) {
-  const session = await getTripSession(tripKey);
-  if (!session?.userId) return null;
+  const context = await getTripActionContext(tripKey);
+  return context?.participant.is_admin ? context : null;
+}
 
-  const supabase = createServerSupabaseClient();
-  const { data: participant, error } = await supabase
-    .from("users")
-    .select("is_admin")
-    .eq("id", session.userId)
-    .eq("trip_id", session.tripId)
-    .maybeSingle();
-
-  if (error || !participant?.is_admin) return null;
-  return { session, supabase };
+function closedTripError(context: { isClosed: boolean }) {
+  return context.isClosed
+    ? {
+        ok: false as const,
+        error: "Ten wyjazd jest zamknięty. Zarządca może go ponownie otworzyć w ustawieniach.",
+      }
+    : null;
 }
 
 export async function joinTripByPinAction(
@@ -216,25 +235,38 @@ export async function createTripAction(input: CreateTripInput): Promise<CreateTr
   const supabase = createServerSupabaseClient();
 
   try {
-    const { data: trip, error: tripError } = await supabase
+    const tripPayload = {
+      name: values.name,
+      start_date: values.startDate,
+      end_date: values.endDate,
+      destination_name: values.destinationName,
+      destination_address: values.destinationAddress,
+      destination_map_url: values.destinationMapUrl,
+      playlist_url: values.playlistUrl,
+      modules: values.modules,
+      dashboard_widgets: values.dashboardWidgets,
+      packing_presets: values.packingPresets,
+    };
+    let tripResult = await supabase
       .from("trips")
-      .insert({
-        name: values.name,
-        start_date: values.startDate,
-        end_date: values.endDate,
-        destination_name: values.destinationName,
-        destination_address: values.destinationAddress,
-        destination_map_url: values.destinationMapUrl,
-        playlist_url: values.playlistUrl,
-        modules: values.modules,
-        dashboard_widgets: values.dashboardWidgets,
-      })
+      .insert(tripPayload)
       .select("id, url_key")
       .single();
 
+    if (tripResult.error && ["42703", "PGRST204"].includes(tripResult.error.code)) {
+      const { packing_presets: _packingPresets, ...legacyTripPayload } = tripPayload;
+      tripResult = await supabase
+        .from("trips")
+        .insert(legacyTripPayload)
+        .select("id, url_key")
+        .single();
+    }
+
+    const { data: trip, error: tripError } = tripResult;
+
     if (tripError || !trip) throw tripError ?? new Error("Nie utworzono wyjazdu.");
 
-    if (values.modules.playlist && values.playlistUrl) {
+    if (values.playlistUrl) {
       const { error: playlistError } = await supabase.from("trip_playlists").insert({
         trip_id: trip.id,
         name: "Playlista wyjazdu",
@@ -319,7 +351,7 @@ export async function updateTripSettingsAction(
     .maybeSingle();
 
   if (participantError || !participant?.is_admin) {
-    return { ok: false, error: "Tylko administrator może zmieniać ustawienia wyjazdu." };
+    return { ok: false, error: "Tylko Zarządca może zmieniać ustawienia wyjazdu." };
   }
 
   const { data: currentTrip, error: tripError } = await supabase
@@ -331,6 +363,12 @@ export async function updateTripSettingsAction(
 
   if (tripError || !currentTrip) {
     return { ok: false, error: "Nie udało się odczytać układu wyjazdu." };
+  }
+  if (currentTrip.status === "closed") {
+    return {
+      ok: false,
+      error: "Ten wyjazd jest zamknięty. Otwórz go ponownie, aby zmienić ustawienia.",
+    };
   }
 
   if (parseFinanceMode(currentTrip.finance_mode) !== values.financeMode) {
@@ -399,15 +437,17 @@ export async function updateParticipantProfileAction(
   if (!parsed.success) return { ok: false, error: "Sprawdź nazwę i link do avatara." };
 
   const values = parsed.data;
-  const session = await getTripSession(values.tripKey);
-  if (!session?.userId) return { ok: false, error: "Sesja wygasła. Dołącz ponownie." };
+  const context = await getTripActionContext(values.tripKey);
+  if (!context) return { ok: false, error: "Sesja wygasła. Dołącz ponownie." };
+  if (context.isClosed) {
+    return { ok: false, error: "Zamknięty wyjazd jest dostępny tylko do wglądu." };
+  }
 
-  const supabase = createServerSupabaseClient();
-  const { error } = await supabase
+  const { error } = await context.supabase
     .from("users")
     .update({ name: values.name, avatar_url: values.avatarUrl })
-    .eq("id", session.userId)
-    .eq("trip_id", session.tripId);
+    .eq("id", context.participant.id)
+    .eq("trip_id", context.session.tripId);
 
   if (error) {
     console.error("Błąd aktualizacji profilu uczestnika:", error);
@@ -422,17 +462,31 @@ export async function addParticipantAction(input: {
   tripKey: string;
   name: string;
   isAdmin: boolean;
+  teamId: string | null;
 }): Promise<ParticipantMutationResult> {
   const parsed = addParticipantSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Podaj prawidłową nazwę uczestnika." };
 
   const context = await getAdminContext(parsed.data.tripKey);
-  if (!context) return { ok: false, error: "Tylko administrator może dodawać uczestników." };
+  if (!context) return { ok: false, error: "Tylko Zarządca może dodawać uczestników." };
+  const closedError = closedTripError(context);
+  if (closedError) return closedError;
+
+  if (parsed.data.teamId) {
+    const { data: team } = await context.supabase
+      .from("teams")
+      .select("id")
+      .eq("id", parsed.data.teamId)
+      .eq("trip_id", context.session.tripId)
+      .maybeSingle();
+    if (!team) return { ok: false, error: "Wybrana drużyna nie istnieje w tym wyjeździe." };
+  }
 
   const { error } = await context.supabase.from("users").insert({
     trip_id: context.session.tripId,
     name: parsed.data.name,
     is_admin: parsed.data.isAdmin,
+    team_id: parsed.data.teamId,
   });
 
   if (error) {
@@ -449,12 +503,15 @@ export async function updateParticipantAction(input: {
   userId: string;
   name: string;
   isAdmin: boolean;
+  teamId: string | null;
 }): Promise<ParticipantMutationResult> {
   const parsed = updateParticipantSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Sprawdź dane uczestnika." };
 
   const context = await getAdminContext(parsed.data.tripKey);
-  if (!context) return { ok: false, error: "Tylko administrator może edytować uczestników." };
+  if (!context) return { ok: false, error: "Tylko Zarządca może edytować uczestników." };
+  const closedError = closedTripError(context);
+  if (closedError) return closedError;
 
   const { data: target, error: targetError } = await context.supabase
     .from("users")
@@ -471,13 +528,27 @@ export async function updateParticipantAction(input: {
       .eq("trip_id", context.session.tripId)
       .eq("is_admin", true);
     if ((count ?? 0) <= 1) {
-      return { ok: false, error: "Wyjazd musi mieć przynajmniej jednego administratora." };
+      return { ok: false, error: "Wyjazd musi mieć przynajmniej jednego Zarządcę." };
     }
+  }
+
+  if (parsed.data.teamId) {
+    const { data: team } = await context.supabase
+      .from("teams")
+      .select("id")
+      .eq("id", parsed.data.teamId)
+      .eq("trip_id", context.session.tripId)
+      .maybeSingle();
+    if (!team) return { ok: false, error: "Wybrana drużyna nie istnieje w tym wyjeździe." };
   }
 
   const { error } = await context.supabase
     .from("users")
-    .update({ name: parsed.data.name, is_admin: parsed.data.isAdmin })
+    .update({
+      name: parsed.data.name,
+      is_admin: parsed.data.isAdmin,
+      team_id: parsed.data.teamId,
+    })
     .eq("id", parsed.data.userId)
     .eq("trip_id", context.session.tripId);
 
@@ -498,7 +569,9 @@ export async function deleteParticipantAction(input: {
   if (!parsed.success) return { ok: false, error: "Nieprawidłowy uczestnik." };
 
   const context = await getAdminContext(parsed.data.tripKey);
-  if (!context) return { ok: false, error: "Tylko administrator może usuwać uczestników." };
+  if (!context) return { ok: false, error: "Tylko Zarządca może usuwać uczestników." };
+  const closedError = closedTripError(context);
+  if (closedError) return closedError;
   if (context.session.userId === parsed.data.userId) {
     return { ok: false, error: "Nie możesz usunąć aktualnie używanego profilu." };
   }
@@ -518,7 +591,7 @@ export async function deleteParticipantAction(input: {
       .eq("trip_id", context.session.tripId)
       .eq("is_admin", true);
     if ((count ?? 0) <= 1) {
-      return { ok: false, error: "Nie można usunąć jedynego administratora." };
+      return { ok: false, error: "Nie można usunąć jedynego Zarządcy." };
     }
   }
 
@@ -533,6 +606,163 @@ export async function deleteParticipantAction(input: {
     return {
       ok: false,
       error: "Nie udało się usunąć uczestnika. Może mieć powiązane wydatki lub zadania.",
+    };
+  }
+
+  revalidatePath(`/t/${parsed.data.tripKey}`, "layout");
+  return { ok: true };
+}
+
+export async function addTeamAction(input: {
+  tripKey: string;
+  name: string;
+  color: string;
+}): Promise<TeamMutationResult> {
+  const parsed = teamSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Sprawdź nazwę i kolor drużyny." };
+
+  const context = await getAdminContext(parsed.data.tripKey);
+  if (!context) return { ok: false, error: "Tylko Zarządca może dodawać drużyny." };
+  const closedError = closedTripError(context);
+  if (closedError) return closedError;
+
+  const { error } = await context.supabase.from("teams").insert({
+    trip_id: context.session.tripId,
+    name: parsed.data.name,
+    color_hex: parsed.data.color,
+  });
+
+  if (error) {
+    console.error("Błąd dodawania drużyny:", error);
+    return { ok: false, error: "Nie udało się dodać drużyny." };
+  }
+
+  revalidatePath(`/t/${parsed.data.tripKey}`, "layout");
+  return { ok: true };
+}
+
+export async function updateTeamAction(input: {
+  tripKey: string;
+  teamId: string;
+  name: string;
+  color: string;
+}): Promise<TeamMutationResult> {
+  const parsed = updateTeamSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Sprawdź nazwę i kolor drużyny." };
+
+  const context = await getAdminContext(parsed.data.tripKey);
+  if (!context) return { ok: false, error: "Tylko Zarządca może edytować drużyny." };
+  const closedError = closedTripError(context);
+  if (closedError) return closedError;
+
+  const { data, error } = await context.supabase
+    .from("teams")
+    .update({ name: parsed.data.name, color_hex: parsed.data.color })
+    .eq("id", parsed.data.teamId)
+    .eq("trip_id", context.session.tripId)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("Błąd edycji drużyny:", error);
+    return { ok: false, error: "Nie udało się zapisać drużyny." };
+  }
+
+  revalidatePath(`/t/${parsed.data.tripKey}`, "layout");
+  return { ok: true };
+}
+
+export async function deleteTeamAction(input: {
+  tripKey: string;
+  teamId: string;
+}): Promise<TeamMutationResult> {
+  const parsed = deleteTeamSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Nieprawidłowa drużyna." };
+
+  const context = await getAdminContext(parsed.data.tripKey);
+  if (!context) return { ok: false, error: "Tylko Zarządca może usuwać drużyny." };
+  const closedError = closedTripError(context);
+  if (closedError) return closedError;
+
+  const { data: team } = await context.supabase
+    .from("teams")
+    .select("id")
+    .eq("id", parsed.data.teamId)
+    .eq("trip_id", context.session.tripId)
+    .maybeSingle();
+  if (!team) return { ok: false, error: "Nie znaleziono drużyny w tym wyjeździe." };
+
+  const { count, error: entriesError } = await context.supabase
+    .from("game_challenge_entries")
+    .select("id", { count: "exact", head: true })
+    .eq("team_id", parsed.data.teamId);
+
+  if (entriesError) {
+    return { ok: false, error: "Nie udało się sprawdzić historii drużyny." };
+  }
+  if ((count ?? 0) > 0) {
+    return {
+      ok: false,
+      error: "Ta drużyna ma historię wyzwań. Możesz zmienić jej nazwę i skład, ale nie usuwać jej.",
+    };
+  }
+
+  const { error: unassignError } = await context.supabase
+    .from("users")
+    .update({ team_id: null })
+    .eq("trip_id", context.session.tripId)
+    .eq("team_id", parsed.data.teamId);
+  if (unassignError) return { ok: false, error: "Nie udało się odpiąć uczestników od drużyny." };
+
+  const { data, error } = await context.supabase
+    .from("teams")
+    .delete()
+    .eq("id", parsed.data.teamId)
+    .eq("trip_id", context.session.tripId)
+    .select("id")
+    .maybeSingle();
+
+  if (error || !data) {
+    console.error("Błąd usuwania drużyny:", error);
+    return { ok: false, error: "Nie udało się usunąć drużyny." };
+  }
+
+  revalidatePath(`/t/${parsed.data.tripKey}`, "layout");
+  return { ok: true };
+}
+
+export async function setTripStatusAction(input: {
+  tripKey: string;
+  status: "active" | "closed";
+}): Promise<UpdateTripSettingsResult> {
+  const parsed = setTripStatusSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Nieprawidłowy stan wyjazdu." };
+
+  const context = await getAdminContext(parsed.data.tripKey);
+  if (!context) {
+    return { ok: false, error: "Tylko Zarządca może zamknąć lub ponownie otworzyć wyjazd." };
+  }
+  if (
+    (parsed.data.status === "closed" && context.isClosed) ||
+    (parsed.data.status === "active" && !context.isClosed)
+  ) {
+    return { ok: true };
+  }
+
+  const { error } = await context.supabase.rpc("set_trip_status", {
+    p_trip_id: context.session.tripId,
+    p_changed_by: context.session.userId!,
+    p_status: parsed.data.status,
+  });
+
+  if (error) {
+    console.error("Błąd zmiany stanu wyjazdu:", error);
+    return {
+      ok: false,
+      error:
+        parsed.data.status === "closed"
+          ? "Nie udało się zamknąć wyjazdu."
+          : "Nie udało się ponownie otworzyć wyjazdu.",
     };
   }
 

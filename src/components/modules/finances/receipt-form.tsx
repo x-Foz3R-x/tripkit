@@ -6,8 +6,14 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import type { Database } from "~/types/database";
 import { useTripRoute } from "~/providers/trip-route-provider";
-import { createExpenseAction } from "~/app/actions/finances";
-import { formatFinanceAmount, getFinanceModeLabel } from "~/lib/finances";
+import { createExpenseAction, updateExpenseAction } from "~/app/actions/finances";
+import {
+  formatFinanceAmount,
+  getExplicitExpenseShares,
+  getFinanceModeLabel,
+  type FinanceExpense,
+  type FinanceMode,
+} from "~/lib/finances";
 import { cn } from "~/lib/utils";
 
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
@@ -17,21 +23,37 @@ interface ExpenseFormProps {
   users: User[];
   activeUserId: string;
   onSuccess: () => void;
+  expense?: FinanceExpense | null;
 }
 
 export const ExpenseForm = memo(function ExpenseForm({
   users,
   activeUserId,
   onSuccess,
+  expense,
 }: ExpenseFormProps) {
   const { urlKey, financeMode } = useTripRoute();
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState<number | null>(null);
+  const initialExplicitShares = expense ? getExplicitExpenseShares(expense) : [];
+  const [description, setDescription] = useState(expense?.description ?? "");
+  const [amountInput, setAmountInput] = useState(
+    expense ? formatMoneyInput(Number(expense.amount), financeMode) : "",
+  );
   const [isLoading, setIsLoading] = useState(false);
-  const [payerId, setPayerId] = useState(activeUserId);
-  const [splitMode, setSplitMode] = useState<SplitMode>("equal");
-  const [splitAmong, setSplitAmong] = useState<string[]>(users.map((user) => user.id));
-  const [manualShares, setManualShares] = useState<Record<string, string>>({});
+  const [payerId, setPayerId] = useState(expense?.user_id ?? activeUserId);
+  const [splitMode, setSplitMode] = useState<SplitMode>(
+    initialExplicitShares.length > 0 ? "manual" : "equal",
+  );
+  const [splitAmong, setSplitAmong] = useState<string[]>(
+    expense?.split_among ?? users.map((user) => user.id),
+  );
+  const [manualShares, setManualShares] = useState<Record<string, string>>(
+    Object.fromEntries(
+      initialExplicitShares.map((share) => [
+        share.user_id,
+        formatMoneyInput(Number(share.amount), financeMode),
+      ]),
+    ),
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -44,9 +66,9 @@ export const ExpenseForm = memo(function ExpenseForm({
     });
   }, [payerId]);
 
-  const parsedAmount = Number(amount);
+  const parsedAmount = parseMoneyInput(amountInput);
   const isAmountValid =
-    Number.isFinite(parsedAmount) &&
+    parsedAmount !== null &&
     parsedAmount > 0 &&
     (financeMode !== "whole" || Number.isInteger(parsedAmount));
   const equalParticipants = splitAmong.filter((id) => id !== payerId);
@@ -56,7 +78,7 @@ export const ExpenseForm = memo(function ExpenseForm({
         .filter((user) => user.id !== payerId)
         .map((user) => ({
           userId: user.id,
-          amount: Number(manualShares[user.id] ?? 0),
+          amount: parseMoneyInput(manualShares[user.id] ?? "") ?? 0,
         }))
         .filter((share) => Number.isFinite(share.amount) && share.amount > 0),
     [manualShares, payerId, users],
@@ -64,6 +86,7 @@ export const ExpenseForm = memo(function ExpenseForm({
   const manualTotal = parsedManualShares.reduce((sum, share) => sum + share.amount, 0);
   const payerPart = isAmountValid ? parsedAmount - manualTotal : 0;
   const areManualSharesValid =
+    parsedAmount !== null &&
     parsedManualShares.length > 0 &&
     manualTotal <= parsedAmount &&
     parsedManualShares.every((share) => financeMode !== "whole" || Number.isInteger(share.amount));
@@ -86,14 +109,17 @@ export const ExpenseForm = memo(function ExpenseForm({
     const participants =
       splitMode === "manual" ? [payerId, ...shares.map((share) => share.userId)] : splitAmong;
 
-    const result = await createExpenseAction({
+    const values = {
       tripKey: urlKey,
       payerId,
       amount: parsedAmount,
       description: description.trim(),
       splitAmong: participants,
       shares,
-    });
+    };
+    const result = expense
+      ? await updateExpenseAction({ ...values, expenseId: expense.id })
+      : await createExpenseAction(values);
 
     setIsLoading(false);
     if (result.ok) onSuccess();
@@ -105,7 +131,7 @@ export const ExpenseForm = memo(function ExpenseForm({
       <div className="border-theme-border mb-4 flex items-center justify-between border-b border-dashed pb-3">
         <span className="text-theme-text flex items-center gap-2 text-xs font-bold tracking-widest uppercase">
           <ReceiptText size={17} className="text-theme-primary" />
-          Nowy wydatek
+          {expense ? "Popraw wydatek" : "Nowy wydatek"}
         </span>
         <span className="text-theme-muted text-[10px]">{getFinanceModeLabel(financeMode)}</span>
       </div>
@@ -134,9 +160,9 @@ export const ExpenseForm = memo(function ExpenseForm({
               className="text-theme-muted pointer-events-none absolute top-1/2 right-4 -translate-y-1/2"
             />
           </span>
-          <span className="text-theme-muted text-[10px]">
-            Możesz wpisać rachunek za osobę, która właśnie prowadzi albo nie ma telefonu pod ręką.
-          </span>
+          {/* <span className="text-theme-muted text-[10px]">
+            Możesz wpisać rachunek za osobę, która teraz nie może lub nie ma telefonu pod ręką.
+          </span> */}
         </label>
 
         {errorMessage && (
@@ -161,14 +187,14 @@ export const ExpenseForm = memo(function ExpenseForm({
           <div className="relative">
             <Input
               label="Kwota rachunku"
-              type="number"
-              step={financeMode === "whole" ? "1" : "0.01"}
-              min={financeMode === "whole" ? "1" : "0.01"}
+              type="text"
               inputMode={financeMode === "whole" ? "numeric" : "decimal"}
-              value={amount ?? ""}
+              value={amountInput}
               placeholder={financeMode === "whole" ? "0" : "0,00"}
               onChange={(event) =>
-                setAmount(event.target.value === "" ? null : Number(event.target.value))
+                setAmountInput((current) =>
+                  normalizeMoneyInput(event.target.value, financeMode, current),
+                )
               }
               className={{
                 input:
@@ -182,7 +208,7 @@ export const ExpenseForm = memo(function ExpenseForm({
           </div>
           {financeMode === "whole" && (
             <p className="text-theme-muted mt-1 text-[10px]">
-              Ten wyjazd używa wyłącznie pełnych złotych.
+              Ten wyjazd używa wyłącznie rozliczeń całkowitych bez groszy.
             </p>
           )}
         </div>
@@ -211,29 +237,71 @@ export const ExpenseForm = memo(function ExpenseForm({
           </div>
 
           {splitMode === "equal" ? (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {users.map((user) => {
-                const isPayer = user.id === payerId;
-                const isSelected = splitAmong.includes(user.id);
-                return (
+            <div className="mt-3">
+              <div className="mb-2 flex min-h-10 items-center justify-between gap-3">
+                <p className="text-theme-muted text-[10px]">
+                  {splitAmong.length} z {users.length} osób
+                </p>
+                <div className="flex gap-3">
                   <button
-                    key={user.id}
                     type="button"
-                    disabled={isPayer}
-                    onClick={() => toggleUser(user.id)}
-                    aria-pressed={isSelected}
-                    className={cn(
-                      "border-theme-border text-theme-muted min-h-10 rounded-full border px-3 text-xs font-bold transition",
-                      isSelected && "border-theme-primary bg-theme-primary/10 text-theme-primary",
-                      isPayer && "cursor-default opacity-70",
-                    )}
+                    onClick={() => setSplitAmong(users.map((user) => user.id))}
+                    className="text-theme-primary min-h-10 text-[10px] font-bold uppercase"
                   >
-                    {isSelected && <Check className="mr-1 inline" size={12} />}
-                    {user.name}
-                    {isPayer && " · płatnik"}
+                    Wszyscy
                   </button>
-                );
-              })}
+                  <button
+                    type="button"
+                    onClick={() => setSplitAmong([payerId])}
+                    className="text-theme-muted min-h-10 text-[10px] font-bold uppercase"
+                  >
+                    Wyczyść
+                  </button>
+                </div>
+              </div>
+              <div
+                className={cn(
+                  "grid grid-cols-2 gap-2",
+                  users.length > 10 && "max-h-68 overflow-y-auto pr-1",
+                )}
+              >
+                {users.map((user) => {
+                  const isPayer = user.id === payerId;
+                  const isSelected = splitAmong.includes(user.id);
+                  return (
+                    <button
+                      key={user.id}
+                      type="button"
+                      disabled={isPayer}
+                      onClick={() => toggleUser(user.id)}
+                      aria-pressed={isSelected}
+                      className={cn(
+                        "border-theme-border text-theme-muted flex min-h-12 min-w-0 items-center gap-2 rounded-xl border px-3 text-left text-xs font-bold transition active:scale-98",
+                        isSelected && "border-theme-primary bg-theme-primary/10 text-theme-text",
+                        isPayer && "cursor-default opacity-70",
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "border-theme-muted/40 flex size-5 shrink-0 items-center justify-center rounded-full border",
+                          isSelected &&
+                            "border-theme-primary bg-theme-primary text-theme-primary-foreground",
+                        )}
+                      >
+                        {isSelected && <Check size={12} strokeWidth={3} />}
+                      </span>
+                      <span className="min-w-0 truncate">
+                        {user.name}
+                        {isPayer && (
+                          <span className="text-theme-muted block text-[8px] uppercase">
+                            Płatnik
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           ) : (
             <div className="mt-3">
@@ -250,16 +318,18 @@ export const ExpenseForm = memo(function ExpenseForm({
                         {user.name}
                       </span>
                       <input
-                        type="number"
-                        min="0"
-                        step={financeMode === "whole" ? "1" : "0.01"}
+                        type="text"
                         inputMode={financeMode === "whole" ? "numeric" : "decimal"}
                         value={manualShares[user.id] ?? ""}
                         placeholder="0"
                         onChange={(event) =>
                           setManualShares((current) => ({
                             ...current,
-                            [user.id]: event.target.value,
+                            [user.id]: normalizeMoneyInput(
+                              event.target.value,
+                              financeMode,
+                              current[user.id] ?? "",
+                            ),
                           }))
                         }
                         className="text-theme-text placeholder:text-theme-muted/40 h-10 w-24 bg-transparent text-right font-mono font-bold outline-hidden"
@@ -296,7 +366,7 @@ export const ExpenseForm = memo(function ExpenseForm({
           className="w-full gap-2 font-mono text-xs font-bold tracking-widest uppercase"
         >
           <ReceiptText size={16} />
-          {isLoading ? "Zapisywanie…" : "Dopisz do paragonu"}
+          {isLoading ? "Zapisywanie…" : expense ? "Zapisz poprawki" : "Dopisz do paragonu"}
         </Button>
       </div>
     </div>
@@ -327,4 +397,29 @@ function SplitModeButton({
       {label}
     </button>
   );
+}
+
+function parseMoneyInput(value: string) {
+  const normalized = value.trim().replace(",", ".");
+  if (!normalized) return null;
+
+  const amount = Number(normalized);
+  return Number.isFinite(amount) ? amount : null;
+}
+
+function formatMoneyInput(value: number, mode: FinanceMode) {
+  if (!Number.isFinite(value)) return "";
+  if (mode === "whole") return String(value);
+  return String(value).replace(".", ",");
+}
+
+function normalizeMoneyInput(value: string, mode: FinanceMode, previous: string) {
+  const compact = value.replace(/\s/g, "");
+
+  if (mode === "whole") {
+    return compact.replace(/\D/g, "");
+  }
+
+  const localized = compact.replace(/\./g, ",");
+  return /^\d*(?:,\d{0,2})?$/.test(localized) ? localized : previous;
 }

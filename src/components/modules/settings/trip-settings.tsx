@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import {
   ArrowDown,
@@ -15,14 +15,18 @@ import {
   CircleDollarSign,
   Copy,
   Dices,
+  Eye,
   EyeOff,
   KeyRound,
   LayoutGrid,
+  LockKeyhole,
   MapPin,
   Music2,
+  PackageCheck,
   Pencil,
   Plus,
   ReceiptText,
+  RotateCcw,
   Save,
   Settings2,
   Share2,
@@ -37,11 +41,16 @@ import {
 } from "lucide-react";
 import {
   addParticipantAction,
+  addTeamAction,
   deleteParticipantAction,
+  deleteTeamAction,
   updateParticipantAction,
   updateParticipantProfileAction,
+  setTripStatusAction,
+  updateTeamAction,
   updateTripSettingsAction,
 } from "~/app/actions/trips";
+import { updatePackingPresetsAction } from "~/app/actions/packing";
 import { Avatar } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -63,6 +72,7 @@ import {
   type TripNavigationKey,
 } from "~/lib/trip-config";
 import { cn } from "~/lib/utils";
+import { PACKING_PRESETS, type PackingPresetKey } from "~/lib/packing";
 
 type SettingsView =
   | "menu"
@@ -71,8 +81,23 @@ type SettingsView =
   | "modules"
   | "widgets"
   | "finances"
+  | "packing"
   | "playlists"
-  | "participants";
+  | "participants"
+  | "lifecycle";
+
+const SETTINGS_VIEWS: readonly SettingsView[] = [
+  "menu",
+  "profile",
+  "details",
+  "modules",
+  "widgets",
+  "finances",
+  "packing",
+  "playlists",
+  "participants",
+  "lifecycle",
+];
 
 type TripSettingsState = {
   name: string;
@@ -96,6 +121,14 @@ type ManagedParticipant = {
   isAdmin: boolean;
   lastSeenAt: string | null;
   userPin: string | null;
+  teamId: string | null;
+};
+
+type ManagedTeam = {
+  id: string;
+  name: string;
+  color: string;
+  score: number;
 };
 
 const ICONS: Record<TripModuleKey, LucideIcon> = {
@@ -105,7 +138,6 @@ const ICONS: Record<TripModuleKey, LucideIcon> = {
   finances: ReceiptText,
   packing: Backpack,
   quests: Sparkles,
-  playlist: Music2,
 };
 
 const GAMEPLAY_WIDGETS: Array<{
@@ -147,6 +179,7 @@ export function TripSettings({
   initialProfile,
   initialTrip,
   participants,
+  teams,
 }: {
   tripKey: string;
   isAdmin: boolean;
@@ -169,11 +202,23 @@ export function TripSettings({
     joinPin: string | null;
     inviteToken: string | null;
     financeEntryCount: number;
+    status: "active" | "closed";
+    closedAt: string | null;
+    packingPresets: PackingPresetKey[];
   };
   participants: ManagedParticipant[];
+  teams: ManagedTeam[];
 }) {
   const router = useRouter();
-  const [view, setView] = useState<SettingsView>("menu");
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const requestedView = searchParams.get("view");
+  const parsedView = SETTINGS_VIEWS.includes(requestedView as SettingsView)
+    ? (requestedView as SettingsView)
+    : "menu";
+  const permittedView = !isAdmin && !["menu", "profile"].includes(parsedView) ? "menu" : parsedView;
+  const view =
+    initialTrip.status === "closed" && permittedView !== "lifecycle" ? "menu" : permittedView;
   const [profile, setProfile] = useState({
     name: initialProfile.name,
     avatarUrl: initialProfile.avatarUrl ?? "",
@@ -193,6 +238,9 @@ export function TripSettings({
     navigation: initialTrip.navigation,
   });
   const [activityNow, setActivityNow] = useState(() => Date.now());
+  const [packingPresetKeys, setPackingPresetKeys] = useState<PackingPresetKey[]>(
+    initialTrip.packingPresets,
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
@@ -205,7 +253,14 @@ export function TripSettings({
 
   const openView = (nextView: SettingsView) => {
     setFeedback(null);
-    setView(nextView);
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    nextSearchParams.set("view", nextView);
+    router.push(`${pathname}?${nextSearchParams.toString()}`, { scroll: false });
+  };
+
+  const closeView = () => {
+    setFeedback(null);
+    router.back();
   };
 
   const navigationOrder = [
@@ -336,6 +391,52 @@ export function TripSettings({
     router.refresh();
   };
 
+  const savePackingPresets = async () => {
+    setIsSaving(true);
+    setFeedback(null);
+    const result = await updatePackingPresetsAction({
+      tripKey,
+      presetKeys: packingPresetKeys,
+    });
+    setIsSaving(false);
+
+    if (!result.ok) {
+      setFeedback({ type: "error", text: result.error });
+      return;
+    }
+
+    setFeedback({ type: "success", text: "Zestawy pakowania zostały zapisane." });
+    router.refresh();
+  };
+
+  const changeTripStatus = async (status: "active" | "closed") => {
+    const accepted = window.confirm(
+      status === "closed"
+        ? "Zamknąć wyjazd? Wszystkie moduły przejdą w tryb tylko do odczytu."
+        : "Ponownie otworzyć wyjazd i pozwolić ekipie na wprowadzanie zmian?",
+    );
+    if (!accepted) return;
+
+    setIsSaving(true);
+    setFeedback(null);
+    const result = await setTripStatusAction({ tripKey, status });
+    setIsSaving(false);
+
+    if (!result.ok) {
+      setFeedback({ type: "error", text: result.error });
+      return;
+    }
+
+    setFeedback({
+      type: "success",
+      text:
+        status === "closed"
+          ? "Wyjazd został zamknięty i jest dostępny tylko do wglądu."
+          : "Wyjazd został ponownie otwarty.",
+    });
+    router.refresh();
+  };
+
   if (view === "menu") {
     return (
       <SettingsPage>
@@ -353,58 +454,92 @@ export function TripSettings({
           />
         )}
 
-        <SettingsMenu>
-          <SettingsMenuItem
-            icon={UserRound}
-            title="Mój profil"
-            description="Nazwa i avatar widoczne dla ekipy"
-            onClick={() => openView("profile")}
-          />
-          {isAdmin && (
-            <>
+        {initialTrip.status === "closed" && (
+          <div className="border-theme-primary/30 bg-theme-primary/8 flex items-start gap-3 rounded-2xl border p-4">
+            <LockKeyhole className="text-theme-primary mt-0.5 shrink-0" size={18} />
+            <div>
+              <p className="text-theme-text text-sm font-bold">Wyjazd jest zamknięty</p>
+              <p className="text-theme-muted mt-1 text-xs leading-relaxed">
+                Dane pozostały na miejscu, ale cała ekipa ma teraz dostęp tylko do historii.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {(initialTrip.status !== "closed" || isAdmin) && (
+          <SettingsMenu>
+            {initialTrip.status !== "closed" && (
               <SettingsMenuItem
-                icon={Settings2}
-                title="Informacje o wyjeździe"
-                description="Nazwa, termin i miejsce docelowe"
-                onClick={() => openView("details")}
+                icon={UserRound}
+                title="Mój profil"
+                description="Nazwa i avatar widoczne dla ekipy"
+                onClick={() => openView("profile")}
               />
-              <SettingsMenuItem
-                icon={Sparkles}
-                title="Moduły i nawigacja"
-                description="Funkcje wyjazdu i kolejność dolnego paska"
-                onClick={() => openView("modules")}
-              />
-              {form.modules.scoreboard && (
+            )}
+            {isAdmin && initialTrip.status !== "closed" && (
+              <>
                 <SettingsMenuItem
-                  icon={LayoutGrid}
-                  title="Elementy Rozgrywki"
-                  description="Punktacja, wyzwania, głosowania i koło"
-                  onClick={() => openView("widgets")}
+                  icon={Settings2}
+                  title="Informacje o wyjeździe"
+                  description="Nazwa, termin i miejsce docelowe"
+                  onClick={() => openView("details")}
                 />
-              )}
-              {form.modules.finances && (
                 <SettingsMenuItem
-                  icon={ReceiptText}
-                  title="Rozliczenia"
-                  description={`${getFinanceModeLabel(form.financeMode)} · ${getSettlementStrategyLabel(form.settlementStrategy)}`}
-                  onClick={() => openView("finances")}
+                  icon={Sparkles}
+                  title="Moduły i nawigacja"
+                  description="Funkcje wyjazdu i kolejność dolnego paska"
+                  onClick={() => openView("modules")}
                 />
-              )}
+                {form.modules.scoreboard && (
+                  <SettingsMenuItem
+                    icon={LayoutGrid}
+                    title="Elementy Rozgrywki"
+                    description="Punktacja, wyzwania, głosowania i koło"
+                    onClick={() => openView("widgets")}
+                  />
+                )}
+                {form.modules.finances && (
+                  <SettingsMenuItem
+                    icon={ReceiptText}
+                    title="Rozliczenia"
+                    description={`${getFinanceModeLabel(form.financeMode)} · ${getSettlementStrategyLabel(form.settlementStrategy)}`}
+                    onClick={() => openView("finances")}
+                  />
+                )}
+                <SettingsMenuItem
+                  icon={Music2}
+                  title="Playlisty"
+                  description="Soundtracki dostępne dla całej ekipy"
+                  onClick={() => openView("playlists")}
+                />
+                <SettingsMenuItem
+                  icon={PackageCheck}
+                  title="Pakowanie"
+                  description="Gotowe zestawy rzeczy dla uczestników"
+                  onClick={() => openView("packing")}
+                />
+                <SettingsMenuItem
+                  icon={UsersRound}
+                  title="Uczestnicy i drużyny"
+                  description="Profile, składy, aktywność i PIN-y"
+                  onClick={() => openView("participants")}
+                />
+              </>
+            )}
+            {isAdmin && (
               <SettingsMenuItem
-                icon={Music2}
-                title="Playlisty"
-                description="Soundtracki dostępne dla całej ekipy"
-                onClick={() => openView("playlists")}
+                icon={initialTrip.status === "closed" ? RotateCcw : LockKeyhole}
+                title={initialTrip.status === "closed" ? "Otwórz wyjazd" : "Zakończ wyjazd"}
+                description={
+                  initialTrip.status === "closed"
+                    ? "Wznów możliwość wprowadzania zmian"
+                    : "Zablokuj zmiany i zachowaj historię"
+                }
+                onClick={() => openView("lifecycle")}
               />
-              <SettingsMenuItem
-                icon={UsersRound}
-                title="Uczestnicy"
-                description="Dodawanie, edycja, aktywność i PIN-y osób"
-                onClick={() => openView("participants")}
-              />
-            </>
-          )}
-        </SettingsMenu>
+            )}
+          </SettingsMenu>
+        )}
       </SettingsPage>
     );
   }
@@ -412,7 +547,7 @@ export function TripSettings({
   if (view === "profile") {
     return (
       <SettingsPage>
-        <SettingsHeader title="Mój profil" onBack={() => openView("menu")} />
+        <SettingsHeader title="Mój profil" onBack={closeView} />
         <FeedbackBanner feedback={feedback} />
         <SettingsCard>
           <div className="flex items-center gap-3">
@@ -453,7 +588,7 @@ export function TripSettings({
   if (view === "details") {
     return (
       <SettingsPage>
-        <SettingsHeader title="Informacje o wyjeździe" onBack={() => openView("menu")} />
+        <SettingsHeader title="Informacje o wyjeździe" onBack={closeView} />
         <FeedbackBanner feedback={feedback} />
         <SettingsCard>
           <Input
@@ -501,11 +636,13 @@ export function TripSettings({
   if (view === "modules") {
     return (
       <SettingsPage>
-        <SettingsHeader title="Moduły i nawigacja" onBack={() => openView("menu")} />
+        <SettingsHeader title="Moduły i nawigacja" onBack={closeView} />
         <FeedbackBanner feedback={feedback} />
         <SettingsCard title="Aktywne moduły" icon={Sparkles}>
           <div className="grid grid-cols-2 gap-2">
-            {TRIP_MODULES.filter((module) => module.key !== "quests").map((module) => {
+            {TRIP_MODULES.filter(
+              (module) => module.key !== "quests" && module.key !== "packing",
+            ).map((module) => {
               const Icon = ICONS[module.key];
               const enabled =
                 module.key === "scoreboard"
@@ -593,7 +730,7 @@ export function TripSettings({
   if (view === "widgets") {
     return (
       <SettingsPage>
-        <SettingsHeader title="Elementy Rozgrywki" onBack={() => openView("menu")} />
+        <SettingsHeader title="Elementy Rozgrywki" onBack={closeView} />
         <FeedbackBanner feedback={feedback} />
         <p className="text-theme-muted text-sm">
           Wybierz funkcje dostępne w całej Rozgrywce. Ich skróty pojawią się też automatycznie w
@@ -638,7 +775,7 @@ export function TripSettings({
   if (view === "finances") {
     return (
       <SettingsPage>
-        <SettingsHeader title="Rozliczenia" onBack={() => openView("menu")} />
+        <SettingsHeader title="Rozliczenia" onBack={closeView} />
         <FeedbackBanner feedback={feedback} />
 
         {form.financeMode === "legacy" && (
@@ -701,38 +838,128 @@ export function TripSettings({
     );
   }
 
+  if (view === "packing") {
+    return (
+      <SettingsPage>
+        <SettingsHeader title="Pakowanie ekipy" onBack={closeView} />
+        <FeedbackBanner feedback={feedback} />
+        <p className="text-theme-muted text-sm leading-relaxed">
+          Wybierz tylko sytuacje pasujące do tego wyjazdu. Każda osoba dostanie własną listę i może
+          dopisać lub ukryć rzeczy bez wpływu na innych.
+        </p>
+        <div className="grid grid-cols-2 gap-2">
+          {PACKING_PRESETS.map((preset) => {
+            const selected = packingPresetKeys.includes(preset.key);
+            return (
+              <button
+                key={preset.key}
+                type="button"
+                aria-pressed={selected}
+                onClick={() =>
+                  setPackingPresetKeys((current) =>
+                    selected
+                      ? current.filter((key) => key !== preset.key)
+                      : [...current, preset.key],
+                  )
+                }
+                className={cn(
+                  "relative flex min-h-28 flex-col items-start rounded-2xl border p-3 text-left transition active:scale-98",
+                  selected
+                    ? "border-theme-primary/45 bg-theme-primary/10"
+                    : "border-theme-border bg-theme-card",
+                )}
+              >
+                <PackageCheck
+                  className={selected ? "text-theme-primary" : "text-theme-muted"}
+                  size={18}
+                />
+                <span className="text-theme-text mt-4 text-sm font-bold">{preset.name}</span>
+                <span className="text-theme-muted mt-1 text-[11px] leading-snug">
+                  {preset.description}
+                </span>
+                {selected && (
+                  <Check className="text-theme-primary absolute top-3 right-3" size={15} />
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <SaveButton
+          isSaving={isSaving}
+          onClick={() => void savePackingPresets()}
+          label="Zapisz zestawy"
+        />
+      </SettingsPage>
+    );
+  }
+
+  if (view === "lifecycle") {
+    const isClosed = initialTrip.status === "closed";
+    return (
+      <SettingsPage>
+        <SettingsHeader
+          title={isClosed ? "Zamknięty wyjazd" : "Zakończenie wyjazdu"}
+          onBack={closeView}
+        />
+        <FeedbackBanner feedback={feedback} />
+        <SettingsCard icon={isClosed ? RotateCcw : LockKeyhole}>
+          <p className="text-theme-text text-base font-bold">
+            {isClosed
+              ? "Historia jest zabezpieczona"
+              : "Zamknij dopiero po ostatnich rozliczeniach"}
+          </p>
+          <p className="text-theme-muted text-sm leading-relaxed">
+            {isClosed
+              ? "Uczestnicy nadal widzą Bazę, zakupy, rozgrywkę i rozliczenia, ale nie mogą niczego dopisywać, usuwać ani potwierdzać."
+              : "Zamknięcie nie usuwa wyjazdu. Zatrzymuje edycję wszystkich modułów, dzięki czemu po czasie nikt przypadkiem nie zmieni rachunków ani historii."}
+          </p>
+          {initialTrip.closedAt && (
+            <p className="text-theme-muted text-xs">
+              Zamknięto{" "}
+              {new Intl.DateTimeFormat("pl-PL", {
+                dateStyle: "long",
+                timeStyle: "short",
+              }).format(new Date(initialTrip.closedAt))}
+            </p>
+          )}
+          <Button
+            type="button"
+            variant={isClosed ? "outline" : "default"}
+            className={isClosed ? undefined : "bg-theme-danger hover:bg-theme-danger/90 text-white"}
+            disabled={isSaving}
+            onClick={() => void changeTripStatus(isClosed ? "active" : "closed")}
+          >
+            {isSaving ? "Zapisywanie…" : isClosed ? "Otwórz wyjazd ponownie" : "Zamknij wyjazd"}
+          </Button>
+        </SettingsCard>
+      </SettingsPage>
+    );
+  }
+
   if (view === "playlists") {
     return (
       <SettingsPage>
-        <SettingsHeader title="Playlisty" onBack={() => openView("menu")} />
-        {form.modules.playlist ? (
-          <SettingsCard>
-            <p className="text-theme-muted text-xs">
-              Dodaj tyle soundtracków, ile potrzebuje ten wyjazd.
-            </p>
-            <PlaylistSettings tripKey={tripKey} playlists={initialTrip.playlists} />
-          </SettingsCard>
-        ) : (
-          <SettingsCard>
-            <p className="text-theme-muted text-sm">
-              Moduł playlist jest wyłączony. Włącz go najpierw w „Moduły i nawigacja”.
-            </p>
-            <Button type="button" variant="outline" onClick={() => openView("modules")}>
-              Przejdź do modułów
-            </Button>
-          </SettingsCard>
-        )}
+        <SettingsHeader title="Playlisty" onBack={closeView} />
+        <SettingsCard>
+          <p className="text-theme-muted text-xs">
+            Dodaj tyle soundtracków, ile potrzebuje ten wyjazd. Pojawią się automatycznie w Bazie i
+            w „Więcej”.
+          </p>
+          <PlaylistSettings tripKey={tripKey} playlists={initialTrip.playlists} />
+        </SettingsCard>
       </SettingsPage>
     );
   }
 
   return (
     <SettingsPage>
-      <SettingsHeader title="Uczestnicy" onBack={() => openView("menu")} />
+      <SettingsHeader title="Uczestnicy i drużyny" onBack={closeView} />
       <ParticipantManager
         tripKey={tripKey}
         currentUserId={currentUserId}
         participants={participants}
+        teams={teams}
+        teamsEnabled={form.dashboardWidgets.includes("scoreboard")}
         activityNow={activityNow}
       />
     </SettingsPage>
@@ -816,21 +1043,281 @@ function TripInviteSettingsCard({
   );
 }
 
+const TEAM_COLORS = ["#ffb44a", "#49a078", "#3b82f6", "#8b5cf6", "#ef6f6c", "#14b8a6"];
+
+function TeamManager({
+  tripKey,
+  teams,
+  participants,
+}: {
+  tripKey: string;
+  teams: ManagedTeam[];
+  participants: ManagedParticipant[];
+}) {
+  const router = useRouter();
+  const [editor, setEditor] = useState<{ teamId: string | null } | null>(null);
+  const [name, setName] = useState("");
+  const [color, setColor] = useState(TEAM_COLORS[0]!);
+  const [isSaving, setIsSaving] = useState(false);
+  const [processingUserId, setProcessingUserId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const editedTeam = teams.find((team) => team.id === editor?.teamId) ?? null;
+
+  const openEditor = (team?: ManagedTeam) => {
+    setError(null);
+    setName(team?.name ?? "");
+    setColor(team?.color ?? TEAM_COLORS[0]!);
+    setEditor({ teamId: team?.id ?? null });
+  };
+
+  const save = async () => {
+    if (!name.trim() || isSaving) return;
+    setIsSaving(true);
+    setError(null);
+    const result = editor?.teamId
+      ? await updateTeamAction({
+          tripKey,
+          teamId: editor.teamId,
+          name,
+          color,
+        })
+      : await addTeamAction({ tripKey, name, color });
+    setIsSaving(false);
+
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+
+    setEditor(null);
+    router.refresh();
+  };
+
+  const removeTeam = async (team: ManagedTeam) => {
+    if (!window.confirm(`Usunąć drużynę ${team.name}? Uczestnicy zostaną bez drużyny.`)) return;
+    setIsSaving(true);
+    setError(null);
+    const result = await deleteTeamAction({ tripKey, teamId: team.id });
+    setIsSaving(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    router.refresh();
+  };
+
+  const toggleMember = async (participant: ManagedParticipant) => {
+    if (!editedTeam || processingUserId) return;
+    setProcessingUserId(participant.id);
+    setError(null);
+    const result = await updateParticipantAction({
+      tripKey,
+      userId: participant.id,
+      name: participant.name,
+      isAdmin: participant.isAdmin,
+      teamId: participant.teamId === editedTeam.id ? null : editedTeam.id,
+    });
+    setProcessingUserId(null);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    router.refresh();
+  };
+
+  return (
+    <SettingsCard>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-theme-text text-sm font-bold">Drużyny · {teams.length}</h2>
+          <p className="text-theme-muted mt-0.5 text-xs">Nazwy, kolory i skład punktacji.</p>
+        </div>
+        <Button type="button" size="sm" onClick={() => openEditor()} className="gap-1.5">
+          <Plus size={16} /> Dodaj
+        </Button>
+      </div>
+
+      {error && (
+        <p className="border-theme-danger/30 bg-theme-danger/10 text-theme-danger rounded-xl border px-3 py-2 text-xs font-bold">
+          {error}
+        </p>
+      )}
+
+      {teams.length === 0 ? (
+        <button
+          type="button"
+          onClick={() => openEditor()}
+          className="border-theme-border text-theme-muted min-h-20 rounded-xl border border-dashed px-4 text-center text-xs"
+        >
+          Dodaj pierwszą drużynę
+        </button>
+      ) : (
+        <div className="border-theme-border divide-theme-border divide-y overflow-hidden rounded-xl border px-3">
+          {teams.map((team) => {
+            const members = participants.filter((participant) => participant.teamId === team.id);
+            return (
+              <div key={team.id} className="flex min-h-17 items-center gap-3 py-2.5">
+                <span
+                  className="size-3 shrink-0 rounded-full"
+                  style={{ backgroundColor: team.color }}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-theme-text truncate text-sm font-bold">{team.name}</p>
+                  <p className="text-theme-muted mt-0.5 truncate text-[10px]">
+                    {members.length === 0
+                      ? "Bez uczestników"
+                      : members.map((member) => member.name).join(", ")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openEditor(team)}
+                  className="text-theme-muted hover:text-theme-text flex size-10 items-center justify-center"
+                  aria-label={`Edytuj drużynę ${team.name}`}
+                >
+                  <Pencil size={16} />
+                </button>
+                <button
+                  type="button"
+                  disabled={isSaving}
+                  onClick={() => void removeTeam(team)}
+                  className="text-theme-muted hover:text-theme-danger flex size-10 items-center justify-center disabled:opacity-40"
+                  aria-label={`Usuń drużynę ${team.name}`}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <ResponsiveDialog
+        isOpen={editor !== null}
+        setIsOpen={(open) => !open && setEditor(null)}
+        title={editor?.teamId ? "Edytuj drużynę" : "Nowa drużyna"}
+        description={
+          editor?.teamId
+            ? "Zmień wygląd drużyny i zaznacz osoby, które mają do niej należeć."
+            : "Najpierw nadaj drużynie nazwę i kolor."
+        }
+      >
+        <div className="flex flex-col gap-4">
+          {error && (
+            <p className="border-theme-danger/30 bg-theme-danger/10 text-theme-danger rounded-xl border px-3 py-2 text-xs font-bold">
+              {error}
+            </p>
+          )}
+          <Input
+            label="Nazwa drużyny"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+          />
+
+          <div>
+            <p className="text-theme-muted mb-2 text-xs">Kolor</p>
+            <div className="flex flex-wrap gap-2">
+              {TEAM_COLORS.map((teamColor) => (
+                <button
+                  key={teamColor}
+                  type="button"
+                  onClick={() => setColor(teamColor)}
+                  className={cn(
+                    "flex size-11 items-center justify-center rounded-full border-2",
+                    color === teamColor ? "border-theme-text" : "border-transparent",
+                  )}
+                  aria-label={`Wybierz kolor ${teamColor}`}
+                >
+                  <span className="size-8 rounded-full" style={{ backgroundColor: teamColor }} />
+                </button>
+              ))}
+              <label className="border-theme-border flex size-11 items-center justify-center overflow-hidden rounded-full border">
+                <span className="sr-only">Własny kolor</span>
+                <input
+                  type="color"
+                  value={color}
+                  onChange={(event) => setColor(event.target.value)}
+                  className="size-14 cursor-pointer border-0 bg-transparent p-0"
+                />
+              </label>
+            </div>
+          </div>
+
+          {editedTeam && (
+            <div>
+              <p className="text-theme-muted mb-2 text-xs">Skład drużyny</p>
+              <div className="border-theme-border divide-theme-border divide-y overflow-hidden rounded-xl border">
+                {participants.map((participant) => {
+                  const selected = participant.teamId === editedTeam.id;
+                  const currentTeam = teams.find((team) => team.id === participant.teamId);
+                  return (
+                    <button
+                      key={participant.id}
+                      type="button"
+                      disabled={processingUserId !== null}
+                      onClick={() => void toggleMember(participant)}
+                      className="flex min-h-13 w-full items-center gap-3 px-3 text-left disabled:opacity-50"
+                    >
+                      <Avatar
+                        user={{ id: participant.id, name: participant.name, avatarUrl: null }}
+                        className="size-8 text-xs"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="text-theme-text block truncate text-sm font-bold">
+                          {participant.name}
+                        </span>
+                        {!selected && currentTeam && (
+                          <span className="text-theme-muted block truncate text-[10px]">
+                            Obecnie: {currentTeam.name}
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className={cn(
+                          "border-theme-border flex size-6 items-center justify-center rounded-full border",
+                          selected &&
+                            "border-theme-primary bg-theme-primary text-theme-primary-foreground",
+                        )}
+                      >
+                        {selected && <Check size={14} strokeWidth={3} />}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <Button type="button" onClick={() => void save()} disabled={isSaving || !name.trim()}>
+            {isSaving ? "Zapisywanie…" : editor?.teamId ? "Zapisz drużynę" : "Dodaj drużynę"}
+          </Button>
+        </div>
+      </ResponsiveDialog>
+    </SettingsCard>
+  );
+}
+
 function ParticipantManager({
   tripKey,
   currentUserId,
   participants,
+  teams,
+  teamsEnabled,
   activityNow,
 }: {
   tripKey: string;
   currentUserId: string;
   participants: ManagedParticipant[];
+  teams: ManagedTeam[];
+  teamsEnabled: boolean;
   activityNow: number;
 }) {
   const router = useRouter();
   const [editor, setEditor] = useState<{ userId: string | null } | null>(null);
   const [name, setName] = useState("");
   const [isAdmin, setIsAdmin] = useState(false);
+  const [teamId, setTeamId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [revealedPins, setRevealedPins] = useState<Set<string>>(new Set());
@@ -839,6 +1326,7 @@ function ParticipantManager({
     setError(null);
     setName(participant?.name ?? "");
     setIsAdmin(participant?.isAdmin ?? false);
+    setTeamId(participant?.teamId ?? null);
     setEditor({ userId: participant?.id ?? null });
   };
 
@@ -851,8 +1339,9 @@ function ParticipantManager({
           userId: editor.userId,
           name,
           isAdmin,
+          teamId,
         })
-      : await addParticipantAction({ tripKey, name, isAdmin });
+      : await addParticipantAction({ tripKey, name, isAdmin, teamId });
     setIsSaving(false);
 
     if (!result.ok) {
@@ -878,131 +1367,188 @@ function ParticipantManager({
   };
 
   return (
-    <SettingsCard>
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-theme-text text-sm font-bold">Ekipa · {participants.length}</h2>
-          <p className="text-theme-muted mt-0.5 text-xs">Profile dostępne przy dołączaniu.</p>
-        </div>
-        <Button type="button" size="sm" onClick={() => openEditor()} className="gap-1.5">
-          <Plus size={16} /> Dodaj
-        </Button>
-      </div>
-
-      {error && (
-        <p className="border-theme-danger/30 bg-theme-danger/10 text-theme-danger rounded-xl border px-3 py-2 text-xs font-bold">
-          {error}
-        </p>
+    <div className="flex flex-col gap-5">
+      {(teamsEnabled || teams.length > 0) && (
+        <TeamManager tripKey={tripKey} teams={teams} participants={participants} />
+      )}
+      {!teamsEnabled && teams.length === 0 && (
+        <SettingsCard title="Drużyny" icon={UsersRound}>
+          <p className="text-theme-muted text-xs leading-relaxed">
+            Drużyny pojawią się tutaj po włączeniu Punktacji w „Elementach Rozgrywki”. Koło i
+            głosowania nie wymagają podziału ekipy.
+          </p>
+        </SettingsCard>
       )}
 
-      <div className="border-theme-border divide-theme-border divide-y overflow-hidden rounded-xl border px-3">
-        {participants.map((participant) => {
-          const revealed = revealedPins.has(participant.id);
-          return (
-            <div key={participant.id} className="flex min-h-19 items-center gap-2 py-2.5">
-              <div className="min-w-0 flex-1">
-                <p className="text-theme-text truncate text-sm font-bold">
-                  {participant.name}
-                  {participant.id === currentUserId && (
-                    <span className="text-theme-muted ml-1.5 text-[9px] uppercase">Ty</span>
-                  )}
-                  {participant.isAdmin && (
-                    <span className="text-theme-primary ml-1.5 text-[9px] tracking-wider uppercase">
-                      Admin
-                    </span>
-                  )}
-                </p>
-                <p className="text-theme-muted mt-0.5 truncate text-[10px]">
-                  {formatLastSeen(participant.lastSeenAt, activityNow)}
-                </p>
-                {revealed && (
-                  <p className="text-theme-muted mt-1 font-mono text-xs tracking-[0.2em]">
-                    {participant.userPin ?? "Nie ustawiono"}
-                  </p>
-                )}
-              </div>
-
-              {participant.userPin && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setRevealedPins((current) => {
-                      const next = new Set(current);
-                      if (next.has(participant.id)) next.delete(participant.id);
-                      else next.add(participant.id);
-                      return next;
-                    })
-                  }
-                  className="text-theme-muted hover:text-theme-text flex h-10 w-10 items-center justify-center"
-                  aria-label={
-                    revealed ? `Ukryj PIN ${participant.name}` : `Pokaż PIN ${participant.name}`
-                  }
-                >
-                  {revealed ? <EyeOff size={16} /> : <KeyRound size={16} />}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => openEditor(participant)}
-                className="text-theme-muted hover:text-theme-text flex h-10 w-10 items-center justify-center"
-                aria-label={`Edytuj ${participant.name}`}
-              >
-                <Pencil size={16} />
-              </button>
-              {participant.id !== currentUserId && (
-                <button
-                  type="button"
-                  disabled={isSaving}
-                  onClick={() => void remove(participant)}
-                  className="text-theme-muted hover:text-theme-danger flex h-10 w-10 items-center justify-center disabled:opacity-40"
-                  aria-label={`Usuń ${participant.name}`}
-                >
-                  <Trash2 size={16} />
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      <ResponsiveDialog
-        isOpen={editor !== null}
-        setIsOpen={(open) => !open && setEditor(null)}
-        title={editor?.userId ? "Edytuj uczestnika" : "Nowy uczestnik"}
-        description="PIN uczestnika ustawi on sam przy pierwszym wejściu."
-      >
-        <div className="flex flex-col gap-4">
-          {error && (
-            <p className="border-theme-danger/30 bg-theme-danger/10 text-theme-danger rounded-xl border px-3 py-2 text-xs font-bold">
-              {error}
-            </p>
-          )}
-          <Input
-            label="Nazwa"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            autoFocus
-          />
-          <button
-            type="button"
-            onClick={() => setIsAdmin((current) => !current)}
-            className={cn(
-              "border-theme-border flex min-h-12 items-center justify-between rounded-xl border px-3 text-left",
-              isAdmin && "border-theme-primary/40 bg-theme-primary/10",
-            )}
-          >
-            <span>
-              <span className="text-theme-text block text-sm font-bold">Administrator</span>
-              <span className="text-theme-muted block text-[11px]">Może zmieniać cały wyjazd</span>
-            </span>
-            {isAdmin && <Check className="text-theme-primary" size={17} />}
-          </button>
-          <Button type="button" onClick={() => void save()} disabled={isSaving || !name.trim()}>
-            {isSaving ? "Zapisywanie…" : editor?.userId ? "Zapisz zmiany" : "Dodaj uczestnika"}
+      <SettingsCard>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-theme-text text-sm font-bold">Ekipa · {participants.length}</h2>
+            <p className="text-theme-muted mt-0.5 text-xs">Profile dostępne przy dołączaniu.</p>
+          </div>
+          <Button type="button" size="sm" onClick={() => openEditor()} className="gap-1.5">
+            <Plus size={16} /> Dodaj
           </Button>
         </div>
-      </ResponsiveDialog>
-    </SettingsCard>
+
+        {error && (
+          <p className="border-theme-danger/30 bg-theme-danger/10 text-theme-danger rounded-xl border px-3 py-2 text-xs font-bold">
+            {error}
+          </p>
+        )}
+
+        <div className="border-theme-border divide-theme-border divide-y overflow-hidden rounded-xl border px-3">
+          {participants.map((participant) => {
+            const revealed = revealedPins.has(participant.id);
+            return (
+              <div key={participant.id} className="flex min-h-19 items-center gap-2 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-theme-text truncate text-sm font-bold">
+                    {participant.name}
+                    {participant.id === currentUserId && (
+                      <span className="text-theme-muted ml-1.5 text-[9px] uppercase">Ty</span>
+                    )}
+                    {participant.isAdmin && (
+                      <span className="text-theme-primary ml-1.5 text-[9px] tracking-wider uppercase">
+                        Zarządca
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-theme-muted mt-0.5 truncate text-[10px]">
+                    {formatLastSeen(participant.lastSeenAt, activityNow)}
+                  </p>
+                  {participant.teamId && (
+                    <p className="text-theme-muted mt-1 flex items-center gap-1.5 truncate text-[10px]">
+                      <span
+                        className="size-2 rounded-full"
+                        style={{
+                          backgroundColor:
+                            teams.find((team) => team.id === participant.teamId)?.color ??
+                            "var(--theme-muted)",
+                        }}
+                      />
+                      {teams.find((team) => team.id === participant.teamId)?.name ??
+                        "Nieznana drużyna"}
+                    </p>
+                  )}
+                  {revealed && (
+                    <p className="text-theme-muted mt-1 font-mono text-xs tracking-[0.2em]">
+                      {participant.userPin ?? "Nie ustawiono"}
+                    </p>
+                  )}
+                </div>
+
+                {participant.userPin && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setRevealedPins((current) => {
+                        const next = new Set(current);
+                        if (next.has(participant.id)) next.delete(participant.id);
+                        else next.add(participant.id);
+                        return next;
+                      })
+                    }
+                    className="text-theme-muted hover:text-theme-text flex h-10 w-10 items-center justify-center"
+                    aria-label={
+                      revealed ? `Ukryj PIN ${participant.name}` : `Pokaż PIN ${participant.name}`
+                    }
+                  >
+                    {revealed ? <EyeOff size={16} /> : <KeyRound size={16} />}
+                  </button>
+                )}
+                {participant.id !== currentUserId && (
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/t/${tripKey}/finances?viewAs=${participant.id}`)}
+                    className="text-theme-muted hover:text-theme-text flex h-10 w-10 items-center justify-center"
+                    aria-label={`Podejrzyj rozliczenia ${participant.name}`}
+                  >
+                    <Eye size={16} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => openEditor(participant)}
+                  className="text-theme-muted hover:text-theme-text flex h-10 w-10 items-center justify-center"
+                  aria-label={`Edytuj ${participant.name}`}
+                >
+                  <Pencil size={16} />
+                </button>
+                {participant.id !== currentUserId && (
+                  <button
+                    type="button"
+                    disabled={isSaving}
+                    onClick={() => void remove(participant)}
+                    className="text-theme-muted hover:text-theme-danger flex h-10 w-10 items-center justify-center disabled:opacity-40"
+                    aria-label={`Usuń ${participant.name}`}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        <ResponsiveDialog
+          isOpen={editor !== null}
+          setIsOpen={(open) => !open && setEditor(null)}
+          title={editor?.userId ? "Edytuj uczestnika" : "Nowy uczestnik"}
+          description="PIN uczestnika ustawi on sam przy pierwszym wejściu."
+        >
+          <div className="flex flex-col gap-4">
+            {error && (
+              <p className="border-theme-danger/30 bg-theme-danger/10 text-theme-danger rounded-xl border px-3 py-2 text-xs font-bold">
+                {error}
+              </p>
+            )}
+            <Input
+              label="Nazwa"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={() => setIsAdmin((current) => !current)}
+              className={cn(
+                "border-theme-border flex min-h-12 items-center justify-between rounded-xl border px-3 text-left",
+                isAdmin && "border-theme-primary/40 bg-theme-primary/10",
+              )}
+            >
+              <span>
+                <span className="text-theme-text block text-sm font-bold">Zarządca</span>
+                <span className="text-theme-muted block text-[11px]">
+                  Może zmieniać cały wyjazd
+                </span>
+              </span>
+              {isAdmin && <Check className="text-theme-primary" size={17} />}
+            </button>
+            {teams.length > 0 && (
+              <label className="flex flex-col gap-1.5">
+                <span className="text-theme-muted text-xs">Drużyna</span>
+                <select
+                  value={teamId ?? ""}
+                  onChange={(event) => setTeamId(event.target.value || null)}
+                  className="bg-theme-card text-theme-text border-theme-border h-12 rounded-xl border px-3 text-sm"
+                >
+                  <option value="">Bez drużyny</option>
+                  {teams.map((team) => (
+                    <option key={team.id} value={team.id}>
+                      {team.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <Button type="button" onClick={() => void save()} disabled={isSaving || !name.trim()}>
+              {isSaving ? "Zapisywanie…" : editor?.userId ? "Zapisz zmiany" : "Dodaj uczestnika"}
+            </Button>
+          </div>
+        </ResponsiveDialog>
+      </SettingsCard>
+    </div>
   );
 }
 

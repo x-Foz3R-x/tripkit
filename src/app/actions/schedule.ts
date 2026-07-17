@@ -2,8 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getTripSession } from "~/lib/server/trip-session";
-import { createServerSupabaseClient, hasSupabaseSecretKey } from "~/lib/supabase/server";
+import { closedTripMutationError, getTripActionContext } from "~/lib/server/trip-action-context";
 
 const tripKeySchema = z.string().regex(/^[0-9a-f]{12}$/);
 const nullableText = (max: number) => z.string().trim().max(max).nullable();
@@ -38,21 +37,8 @@ export type SaveScheduleItemInput = z.infer<typeof scheduleItemSchema>;
 export type ScheduleActionResult = { ok: true } | { ok: false; error: string };
 
 async function getAdminContext(tripKey: string) {
-  if (!hasSupabaseSecretKey()) return null;
-
-  const session = await getTripSession(tripKey);
-  if (!session?.userId) return null;
-
-  const supabase = createServerSupabaseClient();
-  const { data: participant, error } = await supabase
-    .from("users")
-    .select("id, is_admin")
-    .eq("id", session.userId)
-    .eq("trip_id", session.tripId)
-    .maybeSingle();
-
-  if (error || !participant?.is_admin) return null;
-  return { participantId: participant.id, session, supabase };
+  const context = await getTripActionContext(tripKey);
+  return context?.participant.is_admin ? context : null;
 }
 
 function databaseErrorMessage(code?: string) {
@@ -72,8 +58,10 @@ export async function saveScheduleItemAction(
 
   const context = await getAdminContext(parsed.data.tripKey);
   if (!context) {
-    return { ok: false, error: "Tylko administrator może edytować harmonogram." };
+    return { ok: false, error: "Tylko Zarządca może edytować harmonogram." };
   }
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const values = parsed.data;
   const payload = {
@@ -96,7 +84,7 @@ export async function saveScheduleItemAction(
     : await context.supabase.from("schedule_items").insert({
         ...payload,
         trip_id: context.session.tripId,
-        created_by: context.participantId,
+        created_by: context.participant.id,
       });
 
   if (result.error) {
@@ -118,8 +106,10 @@ export async function deleteScheduleItemAction(input: {
 
   const context = await getAdminContext(parsed.data.tripKey);
   if (!context) {
-    return { ok: false, error: "Tylko administrator może edytować harmonogram." };
+    return { ok: false, error: "Tylko Zarządca może edytować harmonogram." };
   }
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const { error } = await context.supabase
     .from("schedule_items")

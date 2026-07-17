@@ -7,11 +7,13 @@ export const TRIP_MODULE_KEYS = [
   "finances",
   "packing",
   "quests",
-  "playlist",
 ] as const;
 
 export type TripModuleKey = (typeof TRIP_MODULE_KEYS)[number];
-export type TripModules = Record<TripModuleKey, boolean>;
+export type TripModules = Record<TripModuleKey, boolean> & {
+  /** Pole zgodności ze starszymi wyjazdami. Playlista nie jest już modułem. */
+  playlist: boolean;
+};
 
 export const DEFAULT_TRIP_MODULES: TripModules = {
   schedule: false,
@@ -25,11 +27,11 @@ export const DEFAULT_TRIP_MODULES: TripModules = {
 
 export const TRIP_MODULES = [
   {
-    key: "schedule",
-    name: "Harmonogram",
-    shortName: "Harmonogram",
-    description: "Plan tylko wtedy, kiedy naprawdę go potrzebujecie.",
-    href: "/schedule",
+    key: "scoreboard",
+    name: "Rozgrywka",
+    shortName: "Rozgrywka",
+    description: "Wybierz punktację, wyzwania, głosowania lub losowania.",
+    href: "/gameplay",
   },
   {
     key: "shopping",
@@ -39,18 +41,18 @@ export const TRIP_MODULES = [
     href: "/shopping",
   },
   {
-    key: "scoreboard",
-    name: "Rozgrywka",
-    shortName: "Rozgrywka",
-    description: "Wybierz punktację, wyzwania, głosowania lub losowania.",
-    href: "/scoreboard",
-  },
-  {
     key: "finances",
     name: "Rozliczenia",
     shortName: "Rozliczenia",
     description: "Wspólne wydatki, podziały kosztów i przelewy.",
     href: "/finances",
+  },
+  {
+    key: "schedule",
+    name: "Harmonogram",
+    shortName: "Harmonogram",
+    description: "Plan tylko wtedy, kiedy naprawdę go potrzebujecie.",
+    href: "/schedule",
   },
   {
     key: "packing",
@@ -66,13 +68,6 @@ export const TRIP_MODULES = [
     description: "Wyzwania i zadania dla uczestników.",
     href: "/quests",
   },
-  {
-    key: "playlist",
-    name: "Playlisty",
-    shortName: "Playlisty",
-    description: "Kilka soundtracków wyjazdu w jednym miejscu.",
-    href: null,
-  },
 ] as const satisfies ReadonlyArray<{
   key: TripModuleKey;
   name: string;
@@ -85,8 +80,10 @@ export const DASHBOARD_WIDGET_KEYS = [
   "destination",
   "dates",
   ...TRIP_MODULE_KEYS,
+  "playlist",
   "wheel",
   "polls",
+  "participants",
 ] as const;
 
 export type DashboardWidgetKey = (typeof DASHBOARD_WIDGET_KEYS)[number];
@@ -96,7 +93,7 @@ export type GameplayDashboardWidgetKey = (typeof GAMEPLAY_DASHBOARD_WIDGET_KEYS)
 
 export const DEFAULT_DASHBOARD_WIDGETS: DashboardWidgetKey[] = ["destination", "dates"];
 
-export const TRIP_NAVIGATION_KEYS = ["shopping", "scoreboard", "finances", "schedule"] as const;
+export const TRIP_NAVIGATION_KEYS = ["scoreboard", "shopping", "finances", "schedule"] as const;
 export type TripNavigationKey = (typeof TRIP_NAVIGATION_KEYS)[number];
 
 export const TRIP_WIDGET_KEYS = [
@@ -233,19 +230,17 @@ export function parseGameplayDashboardWidgets(
 export function getAutomaticDashboardWidgets({
   modules,
   hasDestination,
-  gameplayWidgets,
+  hasPlaylists,
 }: {
   modules: TripModules;
   hasDestination: boolean;
-  gameplayWidgets: GameplayDashboardWidgetKey[];
+  hasPlaylists: boolean;
 }): DashboardWidgetKey[] {
   return [
     ...(hasDestination ? (["destination"] as const) : []),
     ...(modules.schedule ? (["schedule"] as const) : []),
-    ...(modules.shopping ? (["shopping"] as const) : []),
-    ...(modules.finances ? (["finances"] as const) : []),
-    ...(modules.scoreboard ? gameplayWidgets : []),
-    ...(modules.packing ? (["packing"] as const) : []),
-    ...(modules.playlist ? (["playlist"] as const) : []),
+    ...(hasPlaylists ? (["playlist"] as const) : []),
+    "packing",
+    "participants",
   ];
 }

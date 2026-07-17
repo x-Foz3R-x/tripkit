@@ -6,5 +6,5 @@ export default async function LegacyQuestsPage({
   params: Promise<{ tripKey: string }>;
 }) {
   const { tripKey } = await params;
-  redirect(`/t/${tripKey}/scoreboard`);
+  redirect(`/t/${tripKey}/gameplay?view=challenges`);
 }

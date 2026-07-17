@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getTripActionContext } from "~/lib/server/trip-action-context";
+import { closedTripMutationError, getTripActionContext } from "~/lib/server/trip-action-context";
 
 const tripKeySchema = z.string().regex(/^[0-9a-f]{12}$/);
 const challengeSchema = z.object({
@@ -21,7 +21,7 @@ const pollSchema = z.object({
 export type GameplayActionResult = { ok: true } | { ok: false; error: string };
 
 function refreshGameplay(tripKey: string) {
-  revalidatePath(`/t/${tripKey}/scoreboard`);
+  revalidatePath(`/t/${tripKey}/gameplay`);
   revalidatePath(`/t/${tripKey}`);
 }
 
@@ -33,8 +33,10 @@ export async function createChallengeAction(
 
   const context = await getTripActionContext(parsed.data.tripKey);
   if (!context?.participant.is_admin) {
-    return { ok: false, error: "Tylko administrator może dodawać wyzwania." };
+    return { ok: false, error: "Tylko Zarządca może dodawać wyzwania." };
   }
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const { error } = await context.supabase.from("game_challenges").insert({
     trip_id: context.session.tripId,
@@ -61,6 +63,8 @@ export async function claimChallengeAction(input: {
 
   const context = await getTripActionContext(parsed.data.tripKey);
   if (!context) return { ok: false, error: "Sesja wygasła. Wejdź ponownie do wyjazdu." };
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const { data: challenge, error: challengeError } = await context.supabase
     .from("game_challenges")
@@ -99,8 +103,10 @@ export async function completeChallengeAction(input: {
 
   const context = await getTripActionContext(parsed.data.tripKey);
   if (!context?.participant.is_admin) {
-    return { ok: false, error: "Tylko administrator może zaliczyć wyzwanie." };
+    return { ok: false, error: "Tylko Zarządca może zaliczyć wyzwanie." };
   }
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const { error } = await context.supabase.rpc("complete_game_challenge", {
     p_entry_id: parsed.data.entryId,
@@ -126,9 +132,9 @@ export async function createPollAction(input: {
   if (!parsed.success) return { ok: false, error: "Dodaj pytanie i od 2 do 6 odpowiedzi." };
 
   const context = await getTripActionContext(parsed.data.tripKey);
-  if (!context?.participant.is_admin) {
-    return { ok: false, error: "Tylko administrator może tworzyć głosowania." };
-  }
+  if (!context) return { ok: false, error: "Sesja wygasła. Wejdź ponownie do wyjazdu." };
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const options = parsed.data.options.filter(
     (option, index, all) =>
@@ -181,6 +187,8 @@ export async function voteInPollAction(input: {
 
   const context = await getTripActionContext(parsed.data.tripKey);
   if (!context) return { ok: false, error: "Sesja wygasła. Wejdź ponownie do wyjazdu." };
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const [{ data: poll }, { data: option }] = await Promise.all([
     context.supabase
@@ -225,8 +233,10 @@ export async function closePollAction(input: {
 
   const context = await getTripActionContext(parsed.data.tripKey);
   if (!context?.participant.is_admin) {
-    return { ok: false, error: "Tylko administrator może zamknąć głosowanie." };
+    return { ok: false, error: "Tylko Zarządca może zamknąć głosowanie." };
   }
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const { error } = await context.supabase
     .from("polls")
@@ -236,6 +246,31 @@ export async function closePollAction(input: {
     .eq("status", "open");
 
   if (error) return { ok: false, error: "Nie udało się zamknąć głosowania." };
+  refreshGameplay(parsed.data.tripKey);
+  return { ok: true };
+}
+
+export async function deletePollAction(input: {
+  tripKey: string;
+  pollId: string;
+}): Promise<GameplayActionResult> {
+  const parsed = z.object({ tripKey: tripKeySchema, pollId: z.string().uuid() }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Nieprawidłowe głosowanie." };
+
+  const context = await getTripActionContext(parsed.data.tripKey);
+  if (!context?.participant.is_admin) {
+    return { ok: false, error: "Tylko Zarządca może usunąć głosowanie." };
+  }
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
+
+  const { error } = await context.supabase
+    .from("polls")
+    .delete()
+    .eq("id", parsed.data.pollId)
+    .eq("trip_id", context.session.tripId);
+
+  if (error) return { ok: false, error: "Nie udało się usunąć głosowania." };
   refreshGameplay(parsed.data.tripKey);
   return { ok: true };
 }

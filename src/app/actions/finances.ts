@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { getTripActionContext } from "~/lib/server/trip-action-context";
+import { closedTripMutationError, getTripActionContext } from "~/lib/server/trip-action-context";
 import { parseFinanceMode, type FinanceMode } from "~/lib/finances";
 
 const tripKeySchema = z.string().regex(/^[0-9a-f]{12}$/);
@@ -32,6 +32,13 @@ const decideSettlementSchema = z.object({
   tripKey: tripKeySchema,
   settlementId: z.string().uuid(),
   status: z.enum(["confirmed", "rejected"]),
+});
+const updateExpenseSchema = createExpenseSchema.extend({
+  expenseId: z.string().uuid(),
+});
+const deleteExpenseSchema = z.object({
+  tripKey: tripKeySchema,
+  expenseId: z.string().uuid(),
 });
 
 export type FinanceActionResult = { ok: true } | { ok: false; error: string };
@@ -93,6 +100,8 @@ export async function createExpenseAction(input: {
 
   const context = await getTripActionContext(parsed.data.tripKey);
   if (!context) return { ok: false, error: "Sesja wygasła. Wejdź ponownie do wyjazdu." };
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const splitAmong = [...new Set(parsed.data.splitAmong)];
   if (!splitAmong.includes(parsed.data.payerId)) splitAmong.push(parsed.data.payerId);
@@ -160,6 +169,8 @@ export async function reportSettlementAction(input: {
 
   const context = await getTripActionContext(parsed.data.tripKey);
   if (!context) return { ok: false, error: "Sesja wygasła. Wejdź ponownie do wyjazdu." };
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
   if (parsed.data.recipientId === context.participant.id) {
     return { ok: false, error: "Nie można zgłosić przelewu do samego siebie." };
   }
@@ -200,6 +211,8 @@ export async function decideSettlementAction(input: {
 
   const context = await getTripActionContext(parsed.data.tripKey);
   if (!context) return { ok: false, error: "Sesja wygasła. Wejdź ponownie do wyjazdu." };
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
 
   const { data: settlement, error: loadError } = await context.supabase
     .from("expenses")
@@ -215,7 +228,7 @@ export async function decideSettlementAction(input: {
     settlement.settlement_recipient_id !== context.participant.id &&
     !context.participant.is_admin
   ) {
-    return { ok: false, error: "Tylko odbiorca lub administrator może podjąć decyzję." };
+    return { ok: false, error: "Tylko odbiorca lub Zarządca może podjąć decyzję." };
   }
   if (settlement.settlement_status !== "pending") {
     return { ok: false, error: "Ta wpłata została już rozpatrzona." };
@@ -244,6 +257,115 @@ export async function decideSettlementAction(input: {
     .eq("settlement_status", "pending");
 
   if (error) return { ok: false, error: "Nie udało się zapisać decyzji." };
+  revalidateFinances(parsed.data.tripKey);
+  return { ok: true };
+}
+
+export async function updateExpenseAction(input: {
+  tripKey: string;
+  expenseId: string;
+  payerId: string;
+  amount: number;
+  description: string;
+  splitAmong: string[];
+  shares?: Array<{ userId: string; amount: number }>;
+}): Promise<FinanceActionResult> {
+  const parsed = updateExpenseSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Sprawdź opis, kwotę i podział kosztu." };
+
+  const context = await getTripActionContext(parsed.data.tripKey);
+  if (!context) return { ok: false, error: "Sesja wygasła. Wejdź ponownie do wyjazdu." };
+  if (!context.participant.is_admin) {
+    return { ok: false, error: "Tylko Zarządca może poprawiać zapisane wydatki." };
+  }
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
+
+  const splitAmong = [...new Set(parsed.data.splitAmong)];
+  if (!splitAmong.includes(parsed.data.payerId)) splitAmong.push(parsed.data.payerId);
+  const shareUserIds = parsed.data.shares.map((share) => share.userId);
+  if (
+    !(await allUsersBelongToTrip(context, [parsed.data.payerId, ...splitAmong, ...shareUserIds]))
+  ) {
+    return { ok: false, error: "Co najmniej jedna osoba nie należy do tego wyjazdu." };
+  }
+
+  const financeMode = await getTripFinanceMode(context);
+  const amount = normalizeAmount(parsed.data.amount, financeMode);
+  if (amount === null) {
+    return { ok: false, error: "Ten wyjazd rozlicza wydatki wyłącznie w pełnych złotych." };
+  }
+
+  const uniqueShares = new Map<string, number>();
+  for (const share of parsed.data.shares) {
+    if (share.userId === parsed.data.payerId || !splitAmong.includes(share.userId)) {
+      return { ok: false, error: "Nieprawidłowa osoba w ręcznym podziale." };
+    }
+    const normalizedShare = normalizeAmount(share.amount, financeMode);
+    if (normalizedShare === null) {
+      return { ok: false, error: "Ręczny podział musi używać pełnych złotych." };
+    }
+    uniqueShares.set(share.userId, (uniqueShares.get(share.userId) ?? 0) + normalizedShare);
+  }
+
+  const shares = [...uniqueShares].map(([userId, shareAmount]) => ({
+    user_id: userId,
+    amount: shareAmount,
+  }));
+  const sharesTotal =
+    financeMode === "whole"
+      ? shares.reduce((sum, share) => sum + share.amount, 0)
+      : Math.round(shares.reduce((sum, share) => sum + share.amount, 0) * 100) / 100;
+  if (sharesTotal > amount) {
+    return { ok: false, error: "Suma kwot do oddania przekracza wartość wydatku." };
+  }
+
+  const { error } = await context.supabase.rpc("update_expense_entry", {
+    p_trip_id: context.session.tripId,
+    p_expense_id: parsed.data.expenseId,
+    p_changed_by: context.participant.id,
+    p_payer_id: parsed.data.payerId,
+    p_amount: amount,
+    p_description: parsed.data.description,
+    p_split_among: splitAmong,
+    p_shares: shares,
+  });
+
+  if (error) {
+    console.error("Błąd poprawiania wydatku:", error);
+    return { ok: false, error: "Nie udało się poprawić wydatku." };
+  }
+
+  revalidateFinances(parsed.data.tripKey);
+  return { ok: true };
+}
+
+export async function deleteExpenseAction(input: {
+  tripKey: string;
+  expenseId: string;
+}): Promise<FinanceActionResult> {
+  const parsed = deleteExpenseSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Nieprawidłowy wydatek." };
+
+  const context = await getTripActionContext(parsed.data.tripKey);
+  if (!context) return { ok: false, error: "Sesja wygasła. Wejdź ponownie do wyjazdu." };
+  if (!context.participant.is_admin) {
+    return { ok: false, error: "Tylko Zarządca może usuwać zapisane wydatki." };
+  }
+  const closedError = closedTripMutationError(context);
+  if (closedError) return closedError;
+
+  const { error } = await context.supabase.rpc("soft_delete_expense_entry", {
+    p_trip_id: context.session.tripId,
+    p_expense_id: parsed.data.expenseId,
+    p_changed_by: context.participant.id,
+  });
+
+  if (error) {
+    console.error("Błąd usuwania wydatku:", error);
+    return { ok: false, error: "Nie udało się usunąć wydatku." };
+  }
+
   revalidateFinances(parsed.data.tripKey);
   return { ok: true };
 }

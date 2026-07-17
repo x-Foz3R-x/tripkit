@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  ArrowLeft,
   Backpack,
   CalendarDays,
   Check,
@@ -23,6 +22,7 @@ import {
 import { TRIP_MODULES, type TripModuleKey } from "~/lib/trip-config";
 import { useTripRoute } from "~/providers/trip-route-provider";
 import { Avatar } from "~/components/ui/avatar";
+import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { cn } from "~/lib/utils";
 
 const ICONS: Record<TripModuleKey, LucideIcon> = {
@@ -32,14 +32,14 @@ const ICONS: Record<TripModuleKey, LucideIcon> = {
   finances: ReceiptText,
   packing: Backpack,
   quests: Sparkles,
-  playlist: Music2,
 };
 
 export function MoreMenu({ onNavigate }: { onNavigate?: () => void }) {
   const [feedback, setFeedback] = useState<"link" | "pin" | null>(null);
-  const [screen, setScreen] = useState<"main" | "invite">("main");
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
   const {
     isAdmin,
+    layout,
     modules,
     playlists,
     shareAccess,
@@ -49,15 +49,24 @@ export function MoreMenu({ onNavigate }: { onNavigate?: () => void }) {
     userId,
     userName,
   } = useTripRoute();
-  const enabledModules = TRIP_MODULES.filter(
-    (module) => module.key !== "playlist" && module.key !== "quests" && modules[module.key],
-  );
+  const enabledModules = [
+    ...layout.navigation
+      .map((key) => TRIP_MODULES.find((module) => module.key === key))
+      .filter((module): module is (typeof TRIP_MODULES)[number] => Boolean(module)),
+    ...TRIP_MODULES.filter(
+      (module) =>
+        module.key !== "quests" &&
+        module.key !== "packing" &&
+        modules[module.key] &&
+        !layout.navigation.includes(module.key as (typeof layout.navigation)[number]),
+    ),
+  ];
   const participant = {
     id: userId ?? userName ?? "participant",
     name: userName ?? "Uczestnik",
     avatarUrl: userAvatarUrl,
   };
-  const actionGrid = isAdmin && shareAccess ? "grid-cols-4" : "grid-cols-3";
+  const actionGrid = shareAccess ? "grid-cols-4" : "grid-cols-3";
 
   const showFeedback = (value: "link" | "pin") => {
     setFeedback(value);
@@ -111,64 +120,6 @@ export function MoreMenu({ onNavigate }: { onNavigate?: () => void }) {
     }
   };
 
-  if (screen === "invite" && shareAccess) {
-    return (
-      <div className="flex flex-col gap-5">
-        <button
-          type="button"
-          onClick={() => setScreen("main")}
-          className="text-theme-muted hover:text-theme-text flex min-h-11 w-fit items-center gap-2 text-sm font-bold transition"
-        >
-          <ArrowLeft size={17} /> Wróć
-        </button>
-
-        <div>
-          <h2 className="font-heading text-theme-text text-2xl font-bold">Zaproś ekipę</h2>
-          <p className="text-theme-muted mt-1 text-sm">
-            Udostępnij link albo podaj komuś 6-cyfrowy PIN wyjazdu.
-          </p>
-        </div>
-
-        <section className="bg-theme-card border-theme-border rounded-2xl border p-4">
-          <p className="text-theme-muted text-[10px] font-bold tracking-[0.16em] uppercase">
-            PIN wyjazdu
-          </p>
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <span className="text-theme-text font-mono text-2xl font-bold tracking-[0.22em]">
-              {shareAccess.joinPin}
-            </span>
-            <button
-              type="button"
-              onClick={() => void copyPin()}
-              className="border-theme-border text-theme-muted hover:text-theme-text flex min-h-11 items-center gap-2 rounded-xl border px-3 text-xs font-bold transition"
-            >
-              {feedback === "pin" ? <Check size={16} /> : <Copy size={16} />}
-              {feedback === "pin" ? "Skopiowano" : "Kopiuj"}
-            </button>
-          </div>
-        </section>
-
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => void shareInvite()}
-            className="bg-theme-card border-theme-border text-theme-text flex min-h-12 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold transition active:scale-98"
-          >
-            <Share2 size={17} /> Udostępnij
-          </button>
-          <button
-            type="button"
-            onClick={() => void copyInvite()}
-            className="bg-theme-card border-theme-border text-theme-text flex min-h-12 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold transition active:scale-98"
-          >
-            {feedback === "link" ? <Check size={17} /> : <Copy size={17} />}
-            {feedback === "link" ? "Skopiowano" : "Kopiuj link"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-5">
       <section className="flex items-center gap-3 px-1 py-1">
@@ -176,7 +127,7 @@ export function MoreMenu({ onNavigate }: { onNavigate?: () => void }) {
         <div className="min-w-0 flex-1">
           <p className="text-theme-text truncate font-bold">{participant.name}</p>
           <p className="text-theme-muted truncate text-xs">
-            {isAdmin ? "Administrator" : "Uczestnik"} · {tripName}
+            {isAdmin ? "Zarządca" : "Uczestnik"} · {tripName}
           </p>
         </div>
       </section>
@@ -215,7 +166,7 @@ export function MoreMenu({ onNavigate }: { onNavigate?: () => void }) {
         </section>
       )}
 
-      {modules.playlist && playlists.length > 0 && (
+      {playlists.length > 0 && (
         <section className="flex flex-col gap-2.5">
           <p className="text-theme-muted px-1 text-[10px] font-bold tracking-[0.16em] uppercase">
             Playlisty
@@ -257,8 +208,8 @@ export function MoreMenu({ onNavigate }: { onNavigate?: () => void }) {
             label="Inny wyjazd"
             onClick={onNavigate}
           />
-          {isAdmin && shareAccess && (
-            <ActionButton icon={Share2} label="Zaproś" onClick={() => setScreen("invite")} />
+          {shareAccess && (
+            <ActionButton icon={Share2} label="Zaproś" onClick={() => setIsInviteOpen(true)} />
           )}
           <ActionLink
             href={`/t/${urlKey}/settings`}
@@ -268,6 +219,54 @@ export function MoreMenu({ onNavigate }: { onNavigate?: () => void }) {
           />
         </div>
       </section>
+
+      <ResponsiveDialog
+        isOpen={isInviteOpen && Boolean(shareAccess)}
+        setIsOpen={setIsInviteOpen}
+        title="Zaproś ekipę"
+        description="Udostępnij link albo podaj komuś 6-cyfrowy PIN wyjazdu."
+      >
+        {shareAccess && (
+          <div className="flex flex-col gap-4">
+            <section className="bg-theme-card border-theme-border rounded-2xl border p-4">
+              <p className="text-theme-muted text-[10px] font-bold tracking-[0.16em] uppercase">
+                PIN wyjazdu
+              </p>
+              <div className="mt-2 flex items-center justify-between gap-3">
+                <span className="text-theme-text font-mono text-2xl font-bold tracking-[0.22em]">
+                  {shareAccess.joinPin}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void copyPin()}
+                  className="border-theme-border text-theme-muted hover:text-theme-text flex min-h-11 items-center gap-2 rounded-xl border px-3 text-xs font-bold transition"
+                >
+                  {feedback === "pin" ? <Check size={16} /> : <Copy size={16} />}
+                  {feedback === "pin" ? "Skopiowano" : "Kopiuj"}
+                </button>
+              </div>
+            </section>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => void shareInvite()}
+                className="bg-theme-card border-theme-border text-theme-text flex min-h-12 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold transition active:scale-98"
+              >
+                <Share2 size={17} /> Udostępnij
+              </button>
+              <button
+                type="button"
+                onClick={() => void copyInvite()}
+                className="bg-theme-card border-theme-border text-theme-text flex min-h-12 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-bold transition active:scale-98"
+              >
+                {feedback === "link" ? <Check size={17} /> : <Copy size={17} />}
+                {feedback === "link" ? "Skopiowano" : "Kopiuj link"}
+              </button>
+            </div>
+          </div>
+        )}
+      </ResponsiveDialog>
     </div>
   );
 }

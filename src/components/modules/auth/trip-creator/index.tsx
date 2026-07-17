@@ -17,6 +17,7 @@ import {
   type DashboardWidgetKey,
   type TripModules,
 } from "~/lib/trip-config";
+import type { PackingPresetKey } from "~/lib/packing";
 
 export interface TripFormData {
   name: string;
@@ -32,6 +33,7 @@ export interface TripFormData {
   members: string[];
   teams: { id: string; name: string; color: string }[];
   memberAssignments: Record<string, string>;
+  packingPresets: PackingPresetKey[];
 }
 
 const INITIAL_DATA: TripFormData = {
@@ -48,6 +50,7 @@ const INITIAL_DATA: TripFormData = {
   members: [],
   teams: [],
   memberAssignments: {},
+  packingPresets: ["essentials"],
 };
 
 export function TripCreator({ onCancel }: { onCancel: () => void }) {
@@ -89,6 +92,7 @@ export function TripCreator({ onCancel }: { onCancel: () => void }) {
         members: formData.members,
         teams: formData.teams,
         memberAssignments: formData.memberAssignments,
+        packingPresets: formData.packingPresets,
       });
 
       if (!result.ok) {

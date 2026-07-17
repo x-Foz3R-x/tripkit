@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock } from "lucide-react";
+import { Eye, Lock, X } from "lucide-react";
 import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { ExpenseForm } from "~/components/modules/finances/receipt-form";
 import { calculateFinances, type FinanceExpense } from "~/lib/finances";
@@ -19,13 +19,30 @@ type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name"> & 
 export function FinancesScreen({
   initialExpenses,
   initialUsers,
+  subjectUserId,
+  previewUserName,
 }: {
   initialExpenses: FinanceExpense[];
   initialUsers: User[];
+  subjectUserId?: string;
+  previewUserName?: string | null;
 }) {
   const router = useRouter();
-  const { modules, urlKey, userId: activeUserId, financeMode, settlementStrategy } = useTripRoute();
+  const {
+    modules,
+    urlKey,
+    userId: viewerUserId,
+    isAdmin,
+    isClosed,
+    financeMode,
+    settlementStrategy,
+  } = useTripRoute();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const activeUserId = subjectUserId ?? viewerUserId;
+  const isPreview = Boolean(
+    isAdmin && previewUserName && viewerUserId && activeUserId !== viewerUserId,
+  );
+  const isReadOnly = isClosed || isPreview;
 
   const isFinanceEnabled = modules.finances;
 
@@ -52,6 +69,27 @@ export function FinancesScreen({
   const activeUserBalance = activeUserId ? (balances[activeUserId] ?? 0) : 0;
   return (
     <div className="animate-fade-in pb-safe pt-4">
+      {isPreview && (
+        <div className="border-theme-primary/30 bg-theme-card/92 text-theme-text mb-3 flex items-center gap-3 rounded-2xl border p-3 backdrop-blur-xl">
+          <span className="bg-theme-primary/12 text-theme-primary flex size-10 shrink-0 items-center justify-center rounded-xl">
+            <Eye size={18} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-bold">Widok: {previewUserName}</span>
+            <span className="text-theme-muted block text-[11px]">
+              Podgląd tylko do odczytu. Twoja sesja nie została zmieniona.
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => router.replace(`/t/${urlKey}/finances`)}
+            className="text-theme-muted flex size-10 items-center justify-center"
+            aria-label="Wróć do swoich rozliczeń"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      )}
       {!isFinanceEnabled || !activeUserId ? (
         <div className="animate-fade-in flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
           <div className="bg-theme-card text-theme-muted border-theme-border flex h-16 w-16 items-center justify-center rounded-full border shadow-xs">
@@ -84,14 +122,18 @@ export function FinancesScreen({
           relationalTransactions={relationalTransactions}
           optimizedTransactions={optimizedTransactions}
           onDataChanged={router.refresh}
-          onAddExpense={() => setIsModalOpen(true)}
+          onAddExpense={() => {
+            if (!isReadOnly) setIsModalOpen(true);
+          }}
+          readOnly={isReadOnly}
+          canManageExpenses={isAdmin && !isReadOnly}
         />
       )}
 
-      <ResponsiveDialog isOpen={isModalOpen} setIsOpen={setIsModalOpen}>
+      <ResponsiveDialog isOpen={isModalOpen && !isReadOnly} setIsOpen={setIsModalOpen}>
         <ExpenseForm
           users={initialUsers}
-          activeUserId={activeUserId ?? ""}
+          activeUserId={viewerUserId ?? ""}
           onSuccess={handleExpenseSuccess}
         />
       </ResponsiveDialog>

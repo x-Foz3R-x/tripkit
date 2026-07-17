@@ -9,6 +9,7 @@ import {
   parseTripModules,
 } from "~/lib/trip-config";
 import { parseFinanceMode, parseSettlementStrategy } from "~/lib/finances";
+import { parsePackingPresetKeys } from "~/lib/packing";
 
 export default async function SettingsPage({ params }: { params: Promise<{ tripKey: string }> }) {
   const { tripKey } = await params;
@@ -34,24 +35,38 @@ export default async function SettingsPage({ params }: { params: Promise<{ tripK
     is_admin: boolean;
     last_seen_at: string | null;
     user_pin: string | null;
+    team_id: string | null;
+  }> = [];
+  let teams: Array<{
+    id: string;
+    name: string;
+    color_hex: string | null;
+    score: number | null;
   }> = [];
   let financeEntryCount = 0;
 
   if (participant.is_admin) {
     const supabase = createServerSupabaseClient();
-    const [participantsResult, financeEntriesResult] = await Promise.all([
+    const [participantsResult, teamsResult, financeEntriesResult] = await Promise.all([
       supabase
         .from("users")
-        .select("id, name, is_admin, last_seen_at, user_pin")
+        .select("id, name, is_admin, last_seen_at, user_pin, team_id")
         .eq("trip_id", trip.id)
         .order("is_admin", { ascending: false })
+        .order("name"),
+      supabase
+        .from("teams")
+        .select("id, name, color_hex, score")
+        .eq("trip_id", trip.id)
         .order("name"),
       supabase.from("expenses").select("id", { count: "exact", head: true }).eq("trip_id", trip.id),
     ]);
 
     if (participantsResult.error) throw participantsResult.error;
+    if (teamsResult.error) throw teamsResult.error;
     if (financeEntriesResult.error) throw financeEntriesResult.error;
     participants = participantsResult.data ?? [];
+    teams = teamsResult.data ?? [];
     financeEntryCount = financeEntriesResult.count ?? 0;
   }
 
@@ -82,6 +97,9 @@ export default async function SettingsPage({ params }: { params: Promise<{ tripK
         joinPin: participant.is_admin ? trip.join_pin : null,
         inviteToken: participant.is_admin ? trip.invite_token : null,
         financeEntryCount,
+        status: trip.status === "closed" ? "closed" : "active",
+        closedAt: trip.closed_at ?? null,
+        packingPresets: parsePackingPresetKeys(trip.packing_presets),
       }}
       participants={participants.map((user) => ({
         id: user.id,
@@ -89,6 +107,13 @@ export default async function SettingsPage({ params }: { params: Promise<{ tripK
         isAdmin: user.is_admin,
         lastSeenAt: user.last_seen_at ?? null,
         userPin: user.user_pin === null ? null : String(user.user_pin).padStart(4, "0"),
+        teamId: user.team_id ?? null,
+      }))}
+      teams={teams.map((team) => ({
+        id: team.id,
+        name: team.name,
+        color: team.color_hex ?? "#ffb44a",
+        score: team.score ?? 0,
       }))}
     />
   );
