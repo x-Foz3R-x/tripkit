@@ -275,10 +275,10 @@ export function ShoppingScreen({
   }
 
   return (
-    <div className="animate-fade-in -mx-4 -mt-[calc(1rem+env(safe-area-inset-top))] -mb-[calc(8.5rem+env(safe-area-inset-bottom))]">
+    <div className="animate-fade-in -mx-2 -mb-[calc(8.5rem+env(safe-area-inset-bottom))] pt-4">
       <section
         data-bottom-nav-tone="light"
-        className="shopping-notebook relative min-h-dvh overflow-hidden pt-[env(safe-area-inset-top)] pb-[calc(8.5rem+env(safe-area-inset-bottom))] shadow-none"
+        className="shopping-notebook overflow-hidden- min-h-dvh- pt-[env(safe-area-inset-top)] pb-[calc(8.5rem+env(safe-area-inset-bottom))] shadow-none"
       >
         <span className="bg-theme-primary/45 absolute inset-y-0 left-6 w-px" />
         <div className="absolute top-[calc(env(safe-area-inset-top)+1rem)] left-0 flex w-full justify-around px-8">

@@ -12,7 +12,6 @@ import type { Database } from "~/types/database";
 import { useTripRoute } from "~/providers/trip-route-provider";
 import { announceNavigationStart } from "~/lib/navigation-feedback";
 
-// DODAŁEM: & { phone?: string | null }
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name"> & {
   phone?: string | null;
 };

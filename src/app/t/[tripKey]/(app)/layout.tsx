@@ -62,7 +62,7 @@ export default async function ProtectedTripLayout({
               <span className="min-w-0">
                 <span className="block text-xs font-bold">Wyjazd zakończony</span>
                 <span className="text-theme-muted block text-[11px]">
-                  Historia jest dostępna do wglądu, ale nie można już nic zmieniać.
+                  Historia jest dostępna tylko do wglądu.
                 </span>
               </span>
             </aside>

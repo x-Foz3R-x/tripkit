@@ -1,4 +1,5 @@
 import "~/styles/globals.css";
+
 import { type Metadata } from "next";
 import {
   Architects_Daughter,
@@ -35,9 +36,7 @@ const fontNote = Architects_Daughter({
 export const metadata: Metadata = {
   title: "Wyjezdnik",
   description: "Baza wyjazdu i organizacja w jednym miejscu.",
-  icons: {
-    icon: "/favicon.svg",
-  },
+  icons: { icon: "/favicon.svg" },
 };
 
 export const viewport: Viewport = {
