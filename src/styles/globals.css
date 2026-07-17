@@ -192,20 +192,24 @@
     left: 0;
     z-index: 1;
     width: 100%;
-    height: 10px;
+    height: 8px;
     content: "";
-    background:
-      linear-gradient(135deg, transparent 50%, var(--receipt-paper) 51%) 0 0 / 12px 12px repeat-x,
-      linear-gradient(45deg, var(--receipt-paper) 50%, transparent 51%) 6px 0 / 12px 12px repeat-x;
+    background-repeat: repeat-x;
+    background-size: 8px 8px;
   }
 
   .thermal-receipt::before {
-    top: -5px;
+    top: -7px;
+    background-image:
+      linear-gradient(-45deg, var(--receipt-paper) 4px, transparent 0),
+      linear-gradient(45deg, var(--receipt-paper) 4px, transparent 0);
   }
 
   .thermal-receipt::after {
-    bottom: -5px;
-    transform: rotate(180deg);
+    bottom: -7px;
+    background-image:
+      linear-gradient(135deg, var(--receipt-paper) 4px, transparent 0),
+      linear-gradient(225deg, var(--receipt-paper) 4px, transparent 0);
   }
 
   .shopping-notebook {
@@ -231,23 +235,54 @@
   .shopping-notebook::before,
   .shopping-notebook::after {
     position: absolute;
-    left: 0;
     z-index: 1;
-    width: 100%;
-    height: 10px;
     content: "";
-    background:
-      linear-gradient(110deg, transparent 50%, var(--receipt-paper) 51%) 0 0 / 10px 10px repeat-x,
-      linear-gradient(40deg, var(--receipt-paper) 50%, transparent 51%) 2px 0 / 10px 10px repeat-x;
+    background-repeat: repeat;
   }
 
+  /* GÓRA (bardziej intensywna) i DÓŁ (jeszcze subtelniejszy) */
   .shopping-notebook::before {
-    top: -8px;
+    top: -13px; /* 14px wysokości góry minus 1px zakładki */
+    bottom: -2px; /* 3px wysokości dołu minus 1px zakładki */
+    left: 0;
+    width: 100%;
+
+    background-image: 
+    /* GÓRA: Nowy, głęboki wzór rwania dopasowany do wysokości 14px */
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 14'%3E%3Cpath d='M0,14 L0,2 L5,9 L9,1 L14,8 L19,3 L24,11 L29,2 L34,10 L39,4 L44,12 L49,3 L54,9 L57,1 L60,6 L60,14 Z' fill='%23e4d6ba'/%3E%3C/svg%3E"),
+      /* DÓŁ: Skalibrowany mikro-wzór pod wysokość 3px */
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 3'%3E%3Cpath d='M0,0 L12,0 L12,1 L10,2 L8,0.5 L6,2.5 L4,1 L2,2 L0,1 Z' fill='%23e4d6ba'/%3E%3C/svg%3E");
+
+    background-position:
+      top left,
+      bottom left;
+    background-size:
+      60px 14px,
+      12px 3px;
+    background-repeat: repeat-x;
   }
 
+  /* BOKI (zmniejszone do mikro-nieregularności 3px) */
   .shopping-notebook::after {
-    bottom: -4px;
-    transform: rotate(180deg);
+    top: 0;
+    bottom: 0;
+    left: -2px; /* 3px szerokości minus 1px zakładki */
+    right: -2px; /* 3px szerokości minus 1px zakładki */
+    height: 100%;
+
+    background-image:
+    /* LEWA STRONA: Mikro-poszarpanie zwężone do 3px */
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 12'%3E%3Cpath d='M3,0 L3,12 L1.5,10 L2,7 L0.5,5 L1.5,2 L0.5,0 Z' fill='%23e4d6ba'/%3E%3C/svg%3E"),
+      /* PRAWA STRONA: Mikro-poszarpanie zwężone do 3px */
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 3 12'%3E%3Cpath d='M0,0 L0,12 L1.5,10 L1,7 L2.5,5 L1,2 L2.5,0 Z' fill='%23e4d6ba'/%3E%3C/svg%3E");
+
+    background-position:
+      top left,
+      top right;
+    background-size:
+      3px 12px,
+      3px 12px;
+    background-repeat: repeat-y;
   }
 
   .brand-shell {
