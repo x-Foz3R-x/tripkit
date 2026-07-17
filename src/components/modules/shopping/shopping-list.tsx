@@ -20,6 +20,7 @@ import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { Avatar } from "~/components/ui/avatar";
 import { useTripRoute } from "~/providers/trip-route-provider";
 import type { Database } from "~/types/database";
+import { runClientAction } from "~/lib/client-action";
 import { cn } from "~/lib/utils";
 
 type ShoppingItem = Database["public"]["Tables"]["shopping_list"]["Row"];
@@ -33,6 +34,7 @@ export const ShoppingList = memo(function ShoppingList({
   onOptionsItemChange,
   onItemChanged,
   onItemDeleted,
+  onItemDeletionCommitted,
   onEditAudience,
   onMutationCommitted,
   readOnly,
@@ -44,12 +46,14 @@ export const ShoppingList = memo(function ShoppingList({
   onOptionsItemChange: (itemId: string | null) => void;
   onItemChanged: (item: ShoppingItem) => void;
   onItemDeleted: (itemId: string) => void;
+  onItemDeletionCommitted: (itemId: string) => void;
   onEditAudience: (item: ShoppingItem) => void;
   onMutationCommitted: () => void;
   readOnly: boolean;
 }) {
   const { urlKey } = useTripRoute();
   const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
+  const [isClearing, setIsClearing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const completedItems = items.filter((item) => item.is_completed);
@@ -85,11 +89,15 @@ export const ShoppingList = memo(function ShoppingList({
     setLoading(item.id, true);
     setActionError(null);
 
-    const result = await toggleShoppingItemAction({
-      tripKey: urlKey,
-      itemId: item.id,
-      isCompleted: optimistic.is_completed,
-    });
+    const result = await runClientAction(
+      () =>
+        toggleShoppingItemAction({
+          tripKey: urlKey,
+          itemId: item.id,
+          isCompleted: optimistic.is_completed,
+        }),
+      "Nie udało się zaktualizować produktu.",
+    );
     setLoading(item.id, false);
 
     if (result.ok) {
@@ -109,27 +117,39 @@ export const ShoppingList = memo(function ShoppingList({
     onItemDeleted(item.id);
     setLoading(item.id, true);
     setActionError(null);
-    const result = await deleteShoppingItemAction({ tripKey: urlKey, itemId: item.id });
+    const result = await runClientAction(
+      () => deleteShoppingItemAction({ tripKey: urlKey, itemId: item.id }),
+      "Nie udało się usunąć produktu.",
+    );
     setLoading(item.id, false);
     if (!result.ok) {
       onItemChanged(item);
       setActionError(result.error);
     } else {
+      onItemDeletionCommitted(item.id);
       onMutationCommitted();
     }
   };
 
   const clearCompleted = async () => {
-    if (readOnly || completedItems.length === 0 || loadingIds.size > 0) return;
+    if (readOnly || completedItems.length === 0 || loadingIds.size > 0 || isClearing) return;
     if (!window.confirm(`Usunąć ${completedItems.length} skreślonych pozycji?`)) return;
 
+    setIsClearing(true);
+    completedItems.forEach((item) => setLoading(item.id, true));
     completedItems.forEach((item) => onItemDeleted(item.id));
     setActionError(null);
-    const result = await clearCompletedShoppingItemsAction({ tripKey: urlKey });
+    const result = await runClientAction(
+      () => clearCompletedShoppingItemsAction({ tripKey: urlKey }),
+      "Nie udało się usunąć skreślonych rzeczy.",
+    );
+    setIsClearing(false);
+    completedItems.forEach((item) => setLoading(item.id, false));
     if (!result.ok) {
       completedItems.forEach(onItemChanged);
       setActionError(result.error);
     } else {
+      completedItems.forEach((item) => onItemDeletionCommitted(item.id));
       onMutationCommitted();
     }
   };
@@ -267,9 +287,10 @@ export const ShoppingList = memo(function ShoppingList({
             <button
               type="button"
               onClick={() => void clearCompleted()}
+              disabled={isClearing}
               className="text-theme-muted hover:text-theme-danger flex min-h-10 w-full items-center justify-center gap-2 text-[9px]"
             >
-              <Trash2 size={13} /> Usuń wszystkie skreślone
+              <Trash2 size={13} /> {isClearing ? "Usuwanie…" : "Usuń wszystkie skreślone"}
             </button>
           )}
         </div>

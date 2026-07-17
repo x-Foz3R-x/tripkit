@@ -7,6 +7,7 @@ import { deletePlaylistAction, savePlaylistAction } from "~/app/actions/playlist
 import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { runClientAction } from "~/lib/client-action";
 
 export function PlaylistSettings({
   tripKey,
@@ -25,7 +26,10 @@ export function PlaylistSettings({
   const add = async () => {
     setIsSaving(true);
     setError(null);
-    const result = await savePlaylistAction({ id: null, tripKey, name, url });
+    const result = await runClientAction(
+      () => savePlaylistAction({ id: null, tripKey, name, url }),
+      "Nie udało się dodać playlisty.",
+    );
     setIsSaving(false);
     if (!result.ok) {
       setError(result.error);
@@ -44,7 +48,10 @@ export function PlaylistSettings({
     }
     if (!window.confirm("Usunąć tę playlistę?")) return;
     setIsSaving(true);
-    const result = await deletePlaylistAction({ id, tripKey });
+    const result = await runClientAction(
+      () => deletePlaylistAction({ id, tripKey }),
+      "Nie udało się usunąć playlisty.",
+    );
     setIsSaving(false);
     if (!result.ok) {
       setError(result.error);

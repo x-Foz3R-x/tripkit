@@ -15,6 +15,7 @@ import {
   type FinanceMode,
 } from "~/lib/finances";
 import { cn } from "~/lib/utils";
+import { runClientAction } from "~/lib/client-action";
 
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
 type SplitMode = "equal" | "manual";
@@ -117,9 +118,13 @@ export const ExpenseForm = memo(function ExpenseForm({
       splitAmong: participants,
       shares,
     };
-    const result = expense
-      ? await updateExpenseAction({ ...values, expenseId: expense.id })
-      : await createExpenseAction(values);
+    const result = await runClientAction(
+      () =>
+        expense
+          ? updateExpenseAction({ ...values, expenseId: expense.id })
+          : createExpenseAction(values),
+      expense ? "Nie udało się poprawić wydatku." : "Nie udało się dodać wydatku.",
+    );
 
     setIsLoading(false);
     if (result.ok) onSuccess();

@@ -111,15 +111,17 @@ export async function deleteScheduleItemAction(input: {
   const closedError = closedTripMutationError(context);
   if (closedError) return closedError;
 
-  const { error } = await context.supabase
+  const { data: deletedItem, error } = await context.supabase
     .from("schedule_items")
     .delete()
     .eq("id", parsed.data.id)
-    .eq("trip_id", context.session.tripId);
+    .eq("trip_id", context.session.tripId)
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
+  if (error || !deletedItem) {
     console.error("Błąd usuwania punktu harmonogramu:", error);
-    return { ok: false, error: databaseErrorMessage(error.code) };
+    return { ok: false, error: databaseErrorMessage(error?.code) };
   }
 
   revalidatePath(`/t/${parsed.data.tripKey}/schedule`);

@@ -10,7 +10,9 @@ export function ActivityPing({ tripKey }: { tripKey: string }) {
   useEffect(() => {
     const touch = () => {
       if (document.visibilityState !== "visible") return;
-      void touchParticipantActivityAction(tripKey);
+      void touchParticipantActivityAction(tripKey).catch(() => {
+        // Obecność jest pomocnicza i nie może psuć widoku przy słabym zasięgu.
+      });
     };
 
     touch();

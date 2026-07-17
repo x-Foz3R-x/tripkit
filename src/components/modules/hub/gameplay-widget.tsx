@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronRight, Sparkles, Trophy, Vote } from "lucide-react";
 import { voteInPollAction } from "~/app/actions/gameplay";
+import { runClientAction } from "~/lib/client-action";
 import type { DashboardInsights } from "~/lib/server/dashboard";
 import { useTripRoute } from "~/providers/trip-route-provider";
 import { cn } from "~/lib/utils";
@@ -23,11 +24,15 @@ export function GameplayWidget({ insight }: { insight: DashboardInsights["scoreb
     setOwnOptionId(optionId);
     setProcessingOptionId(optionId);
     setError(null);
-    const result = await voteInPollAction({
-      tripKey: urlKey,
-      pollId: poll.id,
-      optionId,
-    });
+    const result = await runClientAction(
+      () =>
+        voteInPollAction({
+          tripKey: urlKey,
+          pollId: poll.id,
+          optionId,
+        }),
+      "Nie udało się zapisać głosu.",
+    );
     setProcessingOptionId(null);
 
     if (!result.ok) {

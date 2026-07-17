@@ -96,13 +96,15 @@ export async function deletePlaylistAction(input: {
   const closedError = closedTripMutationError(context);
   if (closedError) return closedError;
 
-  const { error } = await context.supabase
+  const { data: deletedPlaylist, error } = await context.supabase
     .from("trip_playlists")
     .delete()
     .eq("id", parsed.data.id)
-    .eq("trip_id", context.session.tripId);
+    .eq("trip_id", context.session.tripId)
+    .select("id")
+    .maybeSingle();
 
-  if (error) return { ok: false, error: playlistError(error.code) };
+  if (error || !deletedPlaylist) return { ok: false, error: playlistError(error?.code) };
   await syncLegacyPlaylist(context);
   revalidatePath(`/t/${parsed.data.tripKey}`, "layout");
   return { ok: true };

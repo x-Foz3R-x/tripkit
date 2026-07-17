@@ -10,6 +10,7 @@ import { Link } from "~/components/ui/link";
 import { ExpenseReceipt } from "~/components/modules/finances/receipt";
 import type { Database } from "~/types/database";
 import { useTripRoute } from "~/providers/trip-route-provider";
+import { announceNavigationStart } from "~/lib/navigation-feedback";
 
 // DODAŁEM: & { phone?: string | null }
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name"> & {
@@ -82,7 +83,10 @@ export function FinancesScreen({
           </span>
           <button
             type="button"
-            onClick={() => router.replace(`/t/${urlKey}/finances`)}
+            onClick={() => {
+              announceNavigationStart();
+              router.replace(`/t/${urlKey}/finances`);
+            }}
             className="text-theme-muted flex size-10 items-center justify-center"
             aria-label="Wróć do swoich rozliczeń"
           >

@@ -165,13 +165,15 @@ export async function deleteShoppingItemAction(input: {
   const closedError = closedTripMutationError(context);
   if (closedError) return closedError;
 
-  const { error } = await context.supabase
+  const { data: deletedItem, error } = await context.supabase
     .from("shopping_list")
     .delete()
     .eq("id", parsed.data.itemId)
-    .eq("trip_id", context.session.tripId);
+    .eq("trip_id", context.session.tripId)
+    .select("id")
+    .maybeSingle();
 
-  if (error) return { ok: false, error: "Nie udało się usunąć produktu." };
+  if (error || !deletedItem) return { ok: false, error: "Nie udało się usunąć produktu." };
   revalidateShopping(parsed.data.tripKey);
   return { ok: true };
 }

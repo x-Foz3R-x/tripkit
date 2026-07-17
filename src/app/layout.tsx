@@ -7,6 +7,8 @@ import {
   Nunito_Sans,
 } from "next/font/google";
 import type { Viewport } from "next";
+import { Suspense } from "react";
+import { NavigationFeedback } from "~/components/navigation-feedback";
 import { MotionProvider } from "~/providers/motion-provider";
 
 const fontHeading = Bricolage_Grotesque({
@@ -63,6 +65,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         </div>
 
         <MotionProvider>
+          <Suspense fallback={null}>
+            <NavigationFeedback />
+          </Suspense>
           <main className="relative z-10 mx-auto min-h-dvh max-w-md">{children}</main>
         </MotionProvider>
       </body>

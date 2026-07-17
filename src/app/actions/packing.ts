@@ -189,14 +189,16 @@ export async function deletePackingPersonalItemAction(input: {
   const closedError = closedTripMutationError(context);
   if (closedError) return closedError;
 
-  const { error } = await context.supabase
+  const { data: deletedItem, error } = await context.supabase
     .from("packing_personal_items")
     .delete()
     .eq("id", parsed.data.itemId)
     .eq("trip_id", context.session.tripId)
-    .eq("user_id", context.participant.id);
+    .eq("user_id", context.participant.id)
+    .select("id")
+    .maybeSingle();
 
-  if (error) return { ok: false, error: "Nie udało się usunąć rzeczy." };
+  if (error || !deletedItem) return { ok: false, error: "Nie udało się usunąć rzeczy." };
   refreshPacking(parsed.data.tripKey);
   return { ok: true };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { pl } from "date-fns/locale";
@@ -21,6 +21,7 @@ import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import type { Database } from "~/types/database";
 import { useTripRoute } from "~/providers/trip-route-provider";
+import { runClientAction } from "~/lib/client-action";
 
 type ScheduleItem = Database["public"]["Tables"]["schedule_items"]["Row"];
 
@@ -41,9 +42,16 @@ export function ScheduleScreen({
   const canManage = isAdmin && !isClosed;
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [activeItem, setActiveItem] = useState<ScheduleItem | null>(null);
-  const groups = useMemo(() => groupItems(items), [items]);
+  const [localItems, setLocalItems] = useState(items);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const groups = useMemo(() => groupItems(localItems), [localItems]);
+
+  useEffect(() => {
+    setLocalItems(items);
+  }, [items]);
 
   const openEditor = (item: ScheduleItem | null) => {
+    setActionError(null);
     setActiveItem(item);
     setIsEditorOpen(true);
   };
@@ -54,13 +62,15 @@ export function ScheduleScreen({
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-theme-primary text-[10px] font-bold tracking-[0.18em] uppercase">
-              Karta podróży · {items.length} {items.length === 1 ? "punkt" : "punktów"}
+              Karta podróży · {localItems.length} {localItems.length === 1 ? "punkt" : "punktów"}
             </p>
             <h1 className="font-heading text-theme-text mt-1 text-3xl font-semibold">
               Co, gdzie, kiedy
             </h1>
             <p className="text-theme-muted mt-2 truncate text-xs">
-              {items[0] ? `Najbliżej: ${items[0].title}` : "Miejsce na plan albo pełen spontan."}
+              {localItems[0]
+                ? `Najbliżej: ${localItems[0].title}`
+                : "Miejsce na plan albo pełen spontan."}
             </p>
           </div>
           {canManage && databaseReady ? (
@@ -74,6 +84,12 @@ export function ScheduleScreen({
           ) : null}
         </div>
       </header>
+
+      {actionError && (
+        <p className="border-theme-danger/30 bg-theme-danger/10 text-theme-danger rounded-xl border px-3 py-2 text-sm font-bold">
+          {actionError}
+        </p>
+      )}
 
       {!databaseReady ? (
         <section className="border-theme-accent/30 bg-theme-accent/10 rounded-2xl border p-5">
@@ -183,6 +199,16 @@ export function ScheduleScreen({
           item={activeItem}
           initialDate={tripStartDate}
           onDone={() => setIsEditorOpen(false)}
+          onDeleted={(itemId) => {
+            setLocalItems((current) => current.filter((item) => item.id !== itemId));
+            setActionError(null);
+          }}
+          onDeleteRollback={(item, error) => {
+            setLocalItems((current) =>
+              current.some((candidate) => candidate.id === item.id) ? current : [...current, item],
+            );
+            setActionError(error);
+          }}
         />
       </ResponsiveDialog>
     </div>
@@ -194,11 +220,15 @@ function ScheduleItemForm({
   item,
   initialDate,
   onDone,
+  onDeleted,
+  onDeleteRollback,
 }: {
   tripKey: string;
   item: ScheduleItem | null;
   initialDate: string | null;
   onDone: () => void;
+  onDeleted: (itemId: string) => void;
+  onDeleteRollback: (item: ScheduleItem, error: string) => void;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(item?.title ?? "");
@@ -232,17 +262,21 @@ function ScheduleItemForm({
     }
     setIsSaving(true);
     setError(null);
-    const result = await saveScheduleItemAction({
-      id: item?.id ?? null,
-      tripKey,
-      title,
-      notes: nullable(notes),
-      eventDate: format(eventDate, "yyyy-MM-dd"),
-      startTime: nullable(startTime),
-      endTime: nullable(endTime),
-      locationName: nullable(locationName),
-      locationAddress: null,
-    });
+    const result = await runClientAction(
+      () =>
+        saveScheduleItemAction({
+          id: item?.id ?? null,
+          tripKey,
+          title,
+          notes: nullable(notes),
+          eventDate: format(eventDate, "yyyy-MM-dd"),
+          startTime: nullable(startTime),
+          endTime: nullable(endTime),
+          locationName: nullable(locationName),
+          locationAddress: null,
+        }),
+      "Nie udało się zapisać punktu harmonogramu.",
+    );
     setIsSaving(false);
     if (!result.ok) {
       setError(result.error);
@@ -256,14 +290,18 @@ function ScheduleItemForm({
     if (!item || !window.confirm("Usunąć ten punkt z harmonogramu?")) return;
     setIsSaving(true);
     setError(null);
-    const result = await deleteScheduleItemAction({ id: item.id, tripKey });
+    onDeleted(item.id);
+    onDone();
+    const result = await runClientAction(
+      () => deleteScheduleItemAction({ id: item.id, tripKey }),
+      "Nie udało się usunąć punktu harmonogramu.",
+    );
     setIsSaving(false);
     if (!result.ok) {
-      setError(result.error);
+      onDeleteRollback(item, result.error);
       return;
     }
     router.refresh();
-    onDone();
   };
 
   return (
@@ -353,7 +391,17 @@ function groupItems(items: ScheduleItem[]) {
     current.push(item);
     groups.set(item.event_date, current);
   }
-  return [...groups.entries()];
+  return [...groups.entries()]
+    .sort(([firstDate], [secondDate]) => firstDate.localeCompare(secondDate))
+    .map(
+      ([date, dateItems]) =>
+        [
+          date,
+          [...dateItems].sort((first, second) =>
+            (first.start_time ?? "99:99").localeCompare(second.start_time ?? "99:99"),
+          ),
+        ] as const,
+    );
 }
 
 function formatTime(value: string | null | undefined) {

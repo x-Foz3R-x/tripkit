@@ -264,13 +264,17 @@ export async function deletePollAction(input: {
   const closedError = closedTripMutationError(context);
   if (closedError) return closedError;
 
-  const { error } = await context.supabase
+  const { data: deletedPoll, error } = await context.supabase
     .from("polls")
     .delete()
     .eq("id", parsed.data.pollId)
-    .eq("trip_id", context.session.tripId);
+    .eq("trip_id", context.session.tripId)
+    .select("id")
+    .maybeSingle();
 
-  if (error) return { ok: false, error: "Nie udało się usunąć głosowania." };
+  if (error || !deletedPoll) {
+    return { ok: false, error: "Nie udało się usunąć głosowania." };
+  }
   refreshGameplay(parsed.data.tripKey);
   return { ok: true };
 }

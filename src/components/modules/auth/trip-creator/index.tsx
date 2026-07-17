@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { createTripAction } from "~/app/actions/trips";
+import { announceNavigationStart } from "~/lib/navigation-feedback";
 import { StepBasics } from "./step-basics";
 import { StepModules } from "./step-modules";
 import { StepAdmin } from "./step-admin";
@@ -101,6 +102,7 @@ export function TripCreator({ onCancel }: { onCancel: () => void }) {
         return;
       }
 
+      announceNavigationStart();
       router.replace(`/t/${result.urlKey}`);
       router.refresh();
     } catch (error) {

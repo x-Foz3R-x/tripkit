@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, ChevronDown, Flag, Plus, Sparkles, Trash2, UsersRound, Vote } from "lucide-react";
 import { ResponsiveDialog } from "~/components/responsive-dialog";
@@ -16,6 +16,7 @@ import {
   voteInPollAction,
   type GameplayActionResult,
 } from "~/app/actions/gameplay";
+import { runClientAction } from "~/lib/client-action";
 import { useTripRoute } from "~/providers/trip-route-provider";
 import type { Database } from "~/types/database";
 
@@ -71,13 +72,20 @@ export function GameHub({
   const [dialog, setDialog] = useState<GameDialog>(null);
   const [processingKey, setProcessingKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [localOwnVotes, setLocalOwnVotes] = useState(ownVotes);
+  const [hiddenPollIds, setHiddenPollIds] = useState<Set<string>>(() => new Set());
   const activeTab = showChallenges && showPolls ? tab : showChallenges ? "challenges" : "polls";
   const canCreateActiveItem = !isClosed && (activeTab === "polls" || isAdmin);
+  const visiblePolls = polls.filter((poll) => !hiddenPollIds.has(poll.id));
+
+  useEffect(() => {
+    setLocalOwnVotes(ownVotes);
+  }, [ownVotes]);
 
   const runAction = async (key: string, action: () => Promise<GameplayActionResult>) => {
     setProcessingKey(key);
     setActionError(null);
-    const result = await action();
+    const result = await runClientAction(action, "Nie udało się wykonać tej akcji.");
     setProcessingKey(null);
     if (!result.ok) {
       setActionError(result.error);
@@ -104,7 +112,7 @@ export function GameHub({
           <p className="text-theme-muted text-xs">
             {activeTab === "challenges"
               ? `${challenges.length} ${challenges.length === 1 ? "aktywne wyzwanie" : "aktywnych wyzwań"}`
-              : `${polls.length} ${polls.length === 1 ? "głosowanie" : "głosowań"}`}
+              : `${visiblePolls.length} ${visiblePolls.length === 1 ? "głosowanie" : "głosowań"}`}
           </p>
         ) : (
           <div>
@@ -279,7 +287,7 @@ export function GameHub({
         </div>
       ) : (
         <div className="flex flex-col gap-3">
-          {polls.length === 0 ? (
+          {visiblePolls.length === 0 ? (
             <EmptyState
               icon={<Vote size={22} />}
               title="Cisza przed głosowaniem"
@@ -290,9 +298,9 @@ export function GameHub({
               }
             />
           ) : (
-            polls.map((poll) => {
+            visiblePolls.map((poll) => {
               const options = pollOptions.filter((option) => option.poll_id === poll.id);
-              const selectedOptionId = ownVotes[poll.id];
+              const selectedOptionId = localOwnVotes[poll.id];
               const totalVotes = options.reduce(
                 (total, option) =>
                   total + (pollCounts.find((item) => item.optionId === option.id)?.count ?? 0),
@@ -343,17 +351,30 @@ export function GameHub({
                             disabled={
                               isClosed ||
                               poll.status !== "open" ||
-                              processingKey === `vote:${poll.id}:${option.id}`
+                              processingKey?.startsWith(`vote:${poll.id}:`)
                             }
-                            onClick={() =>
+                            onClick={() => {
+                              const previousOptionId = localOwnVotes[poll.id];
+                              setLocalOwnVotes((current) => ({
+                                ...current,
+                                [poll.id]: option.id,
+                              }));
                               void runAction(`vote:${poll.id}:${option.id}`, () =>
                                 voteInPollAction({
                                   tripKey: urlKey,
                                   pollId: poll.id,
                                   optionId: option.id,
                                 }),
-                              )
-                            }
+                              ).then((saved) => {
+                                if (saved) return;
+                                setLocalOwnVotes((current) => {
+                                  const next = { ...current };
+                                  if (previousOptionId) next[poll.id] = previousOptionId;
+                                  else delete next[poll.id];
+                                  return next;
+                                });
+                              });
+                            }}
                             className={`relative overflow-hidden rounded-xl border px-3 py-3 text-left transition disabled:cursor-default ${
                               isSelected
                                 ? "border-theme-primary text-theme-text"
@@ -403,9 +424,17 @@ export function GameHub({
                             if (!window.confirm("Usunąć to głosowanie wraz z oddanymi głosami?")) {
                               return;
                             }
+                            setHiddenPollIds((current) => new Set(current).add(poll.id));
                             void runAction(`delete:${poll.id}`, () =>
                               deletePollAction({ tripKey: urlKey, pollId: poll.id }),
-                            );
+                            ).then((deleted) => {
+                              if (deleted) return;
+                              setHiddenPollIds((current) => {
+                                const next = new Set(current);
+                                next.delete(poll.id);
+                                return next;
+                              });
+                            });
                           }}
                           className="text-theme-danger flex min-h-10 items-center gap-1.5 text-[10px] font-bold uppercase"
                         >

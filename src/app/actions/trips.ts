@@ -595,13 +595,15 @@ export async function deleteParticipantAction(input: {
     }
   }
 
-  const { error } = await context.supabase
+  const { data: deletedParticipant, error } = await context.supabase
     .from("users")
     .delete()
     .eq("id", parsed.data.userId)
-    .eq("trip_id", context.session.tripId);
+    .eq("trip_id", context.session.tripId)
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
+  if (error || !deletedParticipant) {
     console.error("Błąd usuwania uczestnika:", error);
     return {
       ok: false,

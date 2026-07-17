@@ -13,6 +13,7 @@ import { ShoppingList } from "~/components/modules/shopping/shopping-list";
 import { Avatar } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
 import { Link } from "~/components/ui/link";
+import { runClientAction } from "~/lib/client-action";
 import { createBrowserSupabaseClient } from "~/lib/supabase/client";
 import { useTripRoute } from "~/providers/trip-route-provider";
 import type { Database } from "~/types/database";
@@ -41,8 +42,10 @@ export function ShoppingScreen({
   const [isAdding, setIsAdding] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
   const presenceChannel = useRef<RealtimeChannel | null>(null);
+  const pendingDeletionIds = useRef(new Set<string>());
 
   const upsertItem = useCallback((nextItem: ShoppingItem) => {
+    pendingDeletionIds.current.delete(nextItem.id);
     setItems((current) => {
       const exists = current.some((item) => item.id === nextItem.id);
       const next = exists
@@ -52,17 +55,34 @@ export function ShoppingScreen({
     });
   }, []);
 
-  const removeItem = useCallback((itemId: string) => {
+  const forgetItem = useCallback((itemId: string) => {
     setItems((current) => current.filter((item) => item.id !== itemId));
   }, []);
 
+  const hidePendingDeletion = useCallback(
+    (itemId: string) => {
+      pendingDeletionIds.current.add(itemId);
+      forgetItem(itemId);
+    },
+    [forgetItem],
+  );
+
+  const commitDeletion = useCallback((itemId: string) => {
+    pendingDeletionIds.current.delete(itemId);
+  }, []);
+
   const refreshItems = useCallback(async () => {
-    const result = await getShoppingItemsAction({ tripKey: urlKey });
-    if (result.ok) setItems(result.items);
+    const result = await runClientAction(
+      () => getShoppingItemsAction({ tripKey: urlKey }),
+      "Nie udało się odświeżyć listy zakupów.",
+    );
+    if (result.ok) {
+      setItems(result.items.filter((item) => !pendingDeletionIds.current.has(item.id)));
+    }
   }, [urlKey]);
 
   useEffect(() => {
-    setItems(initialItems);
+    setItems(initialItems.filter((item) => !pendingDeletionIds.current.has(item.id)));
   }, [initialItems]);
 
   useEffect(() => {
@@ -122,25 +142,49 @@ export function ShoppingScreen({
 
   const addItem = async () => {
     const trimmedName = itemName.trim();
-    if (!trimmedName || isAdding) return;
+    if (!trimmedName || isAdding || !activeUserId) return;
+
+    const now = new Date().toISOString();
+    const optimisticItem: ShoppingItem = {
+      id: crypto.randomUUID(),
+      trip_id: tripId,
+      added_by: activeUserId,
+      item_name: trimmedName,
+      for_users: forUsers,
+      is_completed: false,
+      completed_by: null,
+      completed_at: null,
+      claimed_by: null,
+      claimed_at: null,
+      created_at: now,
+      updated_at: now,
+    };
 
     setIsAdding(true);
     setAddError(null);
-    const result = await createShoppingItemAction({
-      tripKey: urlKey,
-      itemName: trimmedName,
-      forUsers,
-    });
+    setItemName("");
+    upsertItem(optimisticItem);
+    const result = await runClientAction(
+      () =>
+        createShoppingItemAction({
+          tripKey: urlKey,
+          itemName: trimmedName,
+          forUsers,
+        }),
+      "Nie udało się dodać produktu.",
+    );
     setIsAdding(false);
 
     if (!result.ok) {
+      forgetItem(optimisticItem.id);
+      setItemName((current) => current || trimmedName);
       setAddError(result.error);
       return;
     }
 
+    forgetItem(optimisticItem.id);
     upsertItem(result.item);
     broadcastInvalidate();
-    setItemName("");
   };
 
   const openNewAudience = () => {
@@ -178,14 +222,28 @@ export function ShoppingScreen({
 
     setIsSavingAudience(true);
     setAudienceError(null);
-    const result = await updateShoppingAudienceAction({
-      tripKey: urlKey,
-      itemId: editingAudienceItem.id,
-      forUsers: normalizedAudience,
+    const previousItem = editingAudienceItem;
+    upsertItem({
+      ...previousItem,
+      for_users: normalizedAudience,
+      updated_at: new Date().toISOString(),
     });
+    setIsAudienceOpen(false);
+    const result = await runClientAction(
+      () =>
+        updateShoppingAudienceAction({
+          tripKey: urlKey,
+          itemId: previousItem.id,
+          forUsers: normalizedAudience,
+        }),
+      "Nie udało się zmienić rachunku.",
+    );
     setIsSavingAudience(false);
     if (!result.ok) {
+      upsertItem(previousItem);
       setAudienceError(result.error);
+      setEditingAudienceItem(previousItem);
+      setIsAudienceOpen(true);
       return;
     }
 
@@ -297,7 +355,8 @@ export function ShoppingScreen({
           activeOptionsItemId={activeOptionsItemId}
           onOptionsItemChange={setActiveOptionsItemId}
           onItemChanged={upsertItem}
-          onItemDeleted={removeItem}
+          onItemDeleted={hidePendingDeletion}
+          onItemDeletionCommitted={commitDeletion}
           onEditAudience={openItemAudience}
           onMutationCommitted={broadcastInvalidate}
           readOnly={isClosed}

@@ -73,6 +73,8 @@ import {
 } from "~/lib/trip-config";
 import { cn } from "~/lib/utils";
 import { PACKING_PRESETS, type PackingPresetKey } from "~/lib/packing";
+import { runClientAction } from "~/lib/client-action";
+import { announceNavigationStart } from "~/lib/navigation-feedback";
 
 type SettingsView =
   | "menu"
@@ -255,6 +257,7 @@ export function TripSettings({
     setFeedback(null);
     const nextSearchParams = new URLSearchParams(searchParams.toString());
     nextSearchParams.set("view", nextView);
+    announceNavigationStart();
     router.push(`${pathname}?${nextSearchParams.toString()}`, { scroll: false });
   };
 
@@ -346,21 +349,25 @@ export function TripSettings({
 
     setIsSaving(true);
     setFeedback(null);
-    const result = await updateTripSettingsAction({
-      tripKey,
-      name: form.name,
-      startDate: nullable(form.startDate),
-      endDate: nullable(form.endDate),
-      destinationName: nullable(form.destinationName),
-      destinationAddress: nullable(form.destinationAddress),
-      destinationMapUrl: nullable(form.destinationMapUrl),
-      playlistUrl: nullable(form.playlistUrl),
-      financeMode: form.financeMode,
-      settlementStrategy: form.settlementStrategy,
-      modules: form.modules,
-      dashboardWidgets: form.dashboardWidgets,
-      navigation: navigationOrder,
-    });
+    const result = await runClientAction(
+      () =>
+        updateTripSettingsAction({
+          tripKey,
+          name: form.name,
+          startDate: nullable(form.startDate),
+          endDate: nullable(form.endDate),
+          destinationName: nullable(form.destinationName),
+          destinationAddress: nullable(form.destinationAddress),
+          destinationMapUrl: nullable(form.destinationMapUrl),
+          playlistUrl: nullable(form.playlistUrl),
+          financeMode: form.financeMode,
+          settlementStrategy: form.settlementStrategy,
+          modules: form.modules,
+          dashboardWidgets: form.dashboardWidgets,
+          navigation: navigationOrder,
+        }),
+      "Nie udało się zapisać ustawień wyjazdu.",
+    );
 
     setIsSaving(false);
     if (!result.ok) {
@@ -375,11 +382,15 @@ export function TripSettings({
   const saveProfile = async () => {
     setIsSaving(true);
     setFeedback(null);
-    const result = await updateParticipantProfileAction({
-      tripKey,
-      name: profile.name,
-      avatarUrl: nullable(profile.avatarUrl),
-    });
+    const result = await runClientAction(
+      () =>
+        updateParticipantProfileAction({
+          tripKey,
+          name: profile.name,
+          avatarUrl: nullable(profile.avatarUrl),
+        }),
+      "Nie udało się zapisać profilu.",
+    );
 
     setIsSaving(false);
     if (!result.ok) {
@@ -394,10 +405,14 @@ export function TripSettings({
   const savePackingPresets = async () => {
     setIsSaving(true);
     setFeedback(null);
-    const result = await updatePackingPresetsAction({
-      tripKey,
-      presetKeys: packingPresetKeys,
-    });
+    const result = await runClientAction(
+      () =>
+        updatePackingPresetsAction({
+          tripKey,
+          presetKeys: packingPresetKeys,
+        }),
+      "Nie udało się zapisać zestawów pakowania.",
+    );
     setIsSaving(false);
 
     if (!result.ok) {
@@ -419,7 +434,10 @@ export function TripSettings({
 
     setIsSaving(true);
     setFeedback(null);
-    const result = await setTripStatusAction({ tripKey, status });
+    const result = await runClientAction(
+      () => setTripStatusAction({ tripKey, status }),
+      "Nie udało się zmienić stanu wyjazdu.",
+    );
     setIsSaving(false);
 
     if (!result.ok) {
@@ -1075,14 +1093,18 @@ function TeamManager({
     if (!name.trim() || isSaving) return;
     setIsSaving(true);
     setError(null);
-    const result = editor?.teamId
-      ? await updateTeamAction({
-          tripKey,
-          teamId: editor.teamId,
-          name,
-          color,
-        })
-      : await addTeamAction({ tripKey, name, color });
+    const result = await runClientAction(
+      () =>
+        editor?.teamId
+          ? updateTeamAction({
+              tripKey,
+              teamId: editor.teamId,
+              name,
+              color,
+            })
+          : addTeamAction({ tripKey, name, color }),
+      "Nie udało się zapisać drużyny.",
+    );
     setIsSaving(false);
 
     if (!result.ok) {
@@ -1098,7 +1120,10 @@ function TeamManager({
     if (!window.confirm(`Usunąć drużynę ${team.name}? Uczestnicy zostaną bez drużyny.`)) return;
     setIsSaving(true);
     setError(null);
-    const result = await deleteTeamAction({ tripKey, teamId: team.id });
+    const result = await runClientAction(
+      () => deleteTeamAction({ tripKey, teamId: team.id }),
+      "Nie udało się usunąć drużyny.",
+    );
     setIsSaving(false);
     if (!result.ok) {
       setError(result.error);
@@ -1111,13 +1136,17 @@ function TeamManager({
     if (!editedTeam || processingUserId) return;
     setProcessingUserId(participant.id);
     setError(null);
-    const result = await updateParticipantAction({
-      tripKey,
-      userId: participant.id,
-      name: participant.name,
-      isAdmin: participant.isAdmin,
-      teamId: participant.teamId === editedTeam.id ? null : editedTeam.id,
-    });
+    const result = await runClientAction(
+      () =>
+        updateParticipantAction({
+          tripKey,
+          userId: participant.id,
+          name: participant.name,
+          isAdmin: participant.isAdmin,
+          teamId: participant.teamId === editedTeam.id ? null : editedTeam.id,
+        }),
+      "Nie udało się zmienić składu drużyny.",
+    );
     setProcessingUserId(null);
     if (!result.ok) {
       setError(result.error);
@@ -1333,15 +1362,19 @@ function ParticipantManager({
   const save = async () => {
     setIsSaving(true);
     setError(null);
-    const result = editor?.userId
-      ? await updateParticipantAction({
-          tripKey,
-          userId: editor.userId,
-          name,
-          isAdmin,
-          teamId,
-        })
-      : await addParticipantAction({ tripKey, name, isAdmin, teamId });
+    const result = await runClientAction(
+      () =>
+        editor?.userId
+          ? updateParticipantAction({
+              tripKey,
+              userId: editor.userId,
+              name,
+              isAdmin,
+              teamId,
+            })
+          : addParticipantAction({ tripKey, name, isAdmin, teamId }),
+      "Nie udało się zapisać uczestnika.",
+    );
     setIsSaving(false);
 
     if (!result.ok) {
@@ -1357,7 +1390,10 @@ function ParticipantManager({
     if (!window.confirm(`Usunąć uczestnika ${participant.name}?`)) return;
     setIsSaving(true);
     setError(null);
-    const result = await deleteParticipantAction({ tripKey, userId: participant.id });
+    const result = await runClientAction(
+      () => deleteParticipantAction({ tripKey, userId: participant.id }),
+      "Nie udało się usunąć uczestnika.",
+    );
     setIsSaving(false);
     if (!result.ok) {
       setError(result.error);
@@ -1460,7 +1496,10 @@ function ParticipantManager({
                 {participant.id !== currentUserId && (
                   <button
                     type="button"
-                    onClick={() => router.push(`/t/${tripKey}/finances?viewAs=${participant.id}`)}
+                    onClick={() => {
+                      announceNavigationStart();
+                      router.push(`/t/${tripKey}/finances?viewAs=${participant.id}`);
+                    }}
                     className="text-theme-muted hover:text-theme-text flex h-10 w-10 items-center justify-center"
                     aria-label={`Podejrzyj rozliczenia ${participant.name}`}
                   >

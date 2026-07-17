@@ -16,6 +16,7 @@ import {
 import { useTripRoute } from "~/providers/trip-route-provider";
 import { decideSettlementAction, reportSettlementAction } from "~/app/actions/finances";
 import { ResponsiveDialog } from "~/components/responsive-dialog";
+import { runClientAction } from "~/lib/client-action";
 
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name"> & {
   phone?: string | null;
@@ -56,6 +57,9 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
   const [copiedPhone, setCopiedPhone] = useState<string | null>(null);
   const [processingKey, setProcessingKey] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [optimisticallyResolvedIds, setOptimisticallyResolvedIds] = useState<Set<string>>(
+    () => new Set(),
+  );
 
   const getUser = (userId: string) => users.find((user) => user.id === userId);
   const getUserName = (userId: string) => getUser(userId)?.name ?? "Nieznany";
@@ -64,12 +68,15 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
 
   const pendingIncoming = settlements.filter(
     (settlement) =>
+      !optimisticallyResolvedIds.has(settlement.id) &&
       getSettlementStatus(settlement) === "pending" &&
       getSettlementRecipientId(settlement) === activeUserId,
   );
   const pendingOutgoing = settlements.filter(
     (settlement) =>
-      getSettlementStatus(settlement) === "pending" && settlement.user_id === activeUserId,
+      !optimisticallyResolvedIds.has(settlement.id) &&
+      getSettlementStatus(settlement) === "pending" &&
+      settlement.user_id === activeUserId,
   );
   const isFullySettled =
     debts.length === 0 &&
@@ -96,21 +103,27 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
 
   const handleReportPayment = async (recipientId: string, amount: number) => {
     const processingId = `report:${recipientId}`;
+    const reportedDebt = selectedDebt;
     setActionError(null);
     setProcessingKey(processingId);
-    const result = await reportSettlementAction({
-      tripKey: urlKey,
-      recipientId,
-      amount,
-    });
+    setSelectedDebt(null);
+    const result = await runClientAction(
+      () =>
+        reportSettlementAction({
+          tripKey: urlKey,
+          recipientId,
+          amount,
+        }),
+      "Nie udało się zgłosić przelewu.",
+    );
     setProcessingKey(null);
 
     if (!result.ok) {
+      setSelectedDebt(reportedDebt);
       setActionError(result.error);
       return;
     }
 
-    setSelectedDebt(null);
     onDataChanged();
   };
 
@@ -121,14 +134,24 @@ export const ReceiptPaymentSection = memo(function ReceiptPaymentSection({
     const processingId = `${status}:${settlementId}`;
     setActionError(null);
     setProcessingKey(processingId);
-    const result = await decideSettlementAction({
-      tripKey: urlKey,
-      settlementId,
-      status,
-    });
+    setOptimisticallyResolvedIds((current) => new Set(current).add(settlementId));
+    const result = await runClientAction(
+      () =>
+        decideSettlementAction({
+          tripKey: urlKey,
+          settlementId,
+          status,
+        }),
+      "Nie udało się zapisać decyzji o przelewie.",
+    );
     setProcessingKey(null);
 
     if (!result.ok) {
+      setOptimisticallyResolvedIds((current) => {
+        const next = new Set(current);
+        next.delete(settlementId);
+        return next;
+      });
       setActionError(result.error);
       return;
     }

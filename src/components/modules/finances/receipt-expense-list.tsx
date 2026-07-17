@@ -14,6 +14,7 @@ import { Button } from "~/components/ui/button";
 import { ExpenseForm } from "~/components/modules/finances/receipt-form";
 import { deleteExpenseAction } from "~/app/actions/finances";
 import { useTripRoute } from "~/providers/trip-route-provider";
+import { runClientAction } from "~/lib/client-action";
 
 type User = Pick<Database["public"]["Tables"]["users"]["Row"], "id" | "name">;
 
@@ -39,15 +40,18 @@ export const ReceiptExpenseList = memo(function ReceiptExpenseList({
   const [selectedExpense, setSelectedExpense] = useState<FinanceExpense | null>(null);
   const [editingExpense, setEditingExpense] = useState<FinanceExpense | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [hiddenExpenseIds, setHiddenExpenseIds] = useState<Set<string>>(() => new Set());
   const [actionError, setActionError] = useState<string | null>(null);
   const newestFirstExpenses = useMemo(
     () =>
-      [...expenses].sort((first, second) => {
-        const firstDate = first.created_at ? new Date(first.created_at).getTime() : 0;
-        const secondDate = second.created_at ? new Date(second.created_at).getTime() : 0;
-        return secondDate - firstDate;
-      }),
-    [expenses],
+      expenses
+        .filter((expense) => !hiddenExpenseIds.has(expense.id))
+        .sort((first, second) => {
+          const firstDate = first.created_at ? new Date(first.created_at).getTime() : 0;
+          const secondDate = second.created_at ? new Date(second.created_at).getTime() : 0;
+          return secondDate - firstDate;
+        }),
+    [expenses, hiddenExpenseIds],
   );
   const hasMoreExpenses = newestFirstExpenses.length > INITIAL_VISIBLE_EXPENSES;
   const visibleExpenses =
@@ -65,20 +69,32 @@ export const ReceiptExpenseList = memo(function ReceiptExpenseList({
     if (!selectedExpense || isDeleting) return;
     if (!window.confirm(`Usunąć wydatek „${selectedExpense.description}”?`)) return;
 
+    const expense = selectedExpense;
     setIsDeleting(true);
     setActionError(null);
-    const result = await deleteExpenseAction({
-      tripKey: urlKey,
-      expenseId: selectedExpense.id,
-    });
+    setHiddenExpenseIds((current) => new Set(current).add(expense.id));
+    setSelectedExpense(null);
+    const result = await runClientAction(
+      () =>
+        deleteExpenseAction({
+          tripKey: urlKey,
+          expenseId: expense.id,
+        }),
+      "Nie udało się usunąć wydatku.",
+    );
     setIsDeleting(false);
 
     if (!result.ok) {
+      setHiddenExpenseIds((current) => {
+        const next = new Set(current);
+        next.delete(expense.id);
+        return next;
+      });
+      setSelectedExpense(expense);
       setActionError(result.error);
       return;
     }
 
-    setSelectedExpense(null);
     onDataChanged();
   };
 

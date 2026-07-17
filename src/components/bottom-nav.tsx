@@ -16,6 +16,7 @@ import { motion } from "framer-motion";
 import { ResponsiveDialog } from "~/components/responsive-dialog";
 import { MoreMenu } from "~/components/more-menu";
 import { MOTION_TRANSITIONS } from "~/lib/motion";
+import { announceNavigationStart } from "~/lib/navigation-feedback";
 import type { TripNavigationKey } from "~/lib/trip-config";
 import { cn } from "~/lib/utils";
 import { useTripRoute } from "~/providers/trip-route-provider";
@@ -229,6 +230,7 @@ export function BottomNav() {
     }
     setOptimisticIndex(index);
     setPendingHref(href);
+    announceNavigationStart();
     router.push(href);
   };
 
