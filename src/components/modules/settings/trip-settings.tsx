@@ -43,6 +43,7 @@ import {
   addParticipantAction,
   addTeamAction,
   deleteParticipantAction,
+  deleteTripPermanentlyAction,
   deleteTeamAction,
   updateParticipantAction,
   updateParticipantProfileAction,
@@ -75,6 +76,7 @@ import { cn } from "~/lib/utils";
 import { PACKING_PRESETS, type PackingPresetKey } from "~/lib/packing";
 import { runClientAction } from "~/lib/client-action";
 import { announceNavigationStart } from "~/lib/navigation-feedback";
+import { forgetSavedTrip } from "~/lib/saved-trips";
 
 type SettingsView =
   | "menu"
@@ -245,6 +247,11 @@ export function TripSettings({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [feedback, setFeedback] = useState<Feedback>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deleteAcknowledged, setDeleteAcknowledged] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const nullable = (value: string) => value.trim() || null;
 
@@ -452,6 +459,34 @@ export function TripSettings({
           ? "Wyjazd został zamknięty i jest dostępny tylko do wglądu."
           : "Wyjazd został ponownie otwarty.",
     });
+    router.refresh();
+  };
+
+  const deleteTripPermanently = async () => {
+    if (isDeleting || deleteConfirmation !== initialTrip.name || !deleteAcknowledged) {
+      return;
+    }
+
+    setIsDeleting(true);
+    setDeleteError(null);
+    const result = await runClientAction(
+      () =>
+        deleteTripPermanentlyAction({
+          tripKey,
+          confirmationName: deleteConfirmation,
+        }),
+      "Nie udało się trwale usunąć wyjazdu.",
+    );
+
+    if (!result.ok) {
+      setIsDeleting(false);
+      setDeleteError(result.error);
+      return;
+    }
+
+    forgetSavedTrip(tripKey);
+    announceNavigationStart();
+    router.replace("/");
     router.refresh();
   };
 
@@ -950,6 +985,85 @@ export function TripSettings({
             {isSaving ? "Zapisywanie…" : isClosed ? "Otwórz wyjazd ponownie" : "Zamknij wyjazd"}
           </Button>
         </SettingsCard>
+        <SettingsCard title="Strefa nieodwracalna" icon={Trash2}>
+          <p className="text-theme-muted text-sm leading-relaxed">
+            Trwałe usunięcie kasuje uczestników, zakupy, rozgrywkę, harmonogram i wszystkie
+            rozliczenia. Tej operacji nie można cofnąć.
+          </p>
+          <p className="text-theme-muted text-xs">
+            Obecnie: {participants.length} uczestników i {initialTrip.financeEntryCount} wpisów w
+            rozliczeniach.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            className="border-theme-danger/40 text-theme-danger hover:bg-theme-danger/10"
+            onClick={() => {
+              setDeleteConfirmation("");
+              setDeleteAcknowledged(false);
+              setDeleteError(null);
+              setIsDeleteDialogOpen(true);
+            }}
+          >
+            <Trash2 size={17} /> Usuń wyjazd na zawsze
+          </Button>
+        </SettingsCard>
+
+        <ResponsiveDialog
+          isOpen={isDeleteDialogOpen}
+          setIsOpen={(open) => {
+            if (isDeleting) return;
+            setIsDeleteDialogOpen(open);
+          }}
+          title="Trwale usunąć wyjazd?"
+          description="To nie jest archiwizacja. Po zatwierdzeniu nie będzie możliwości odzyskania danych."
+        >
+          <div className="flex flex-col gap-4">
+            <div className="border-theme-danger/30 bg-theme-danger/10 rounded-2xl border p-4">
+              <p className="text-theme-danger text-sm font-bold">
+                Zniknie cały wyjazd „{initialTrip.name}”
+              </p>
+              <p className="text-theme-muted mt-1 text-xs leading-relaxed">
+                Wraz z nim zostaną usunięte wszystkie dane uczestników i modułów.
+              </p>
+            </div>
+
+            <Input
+              label={`Wpisz dokładnie: ${initialTrip.name}`}
+              value={deleteConfirmation}
+              autoComplete="off"
+              disabled={isDeleting}
+              onChange={(event) => setDeleteConfirmation(event.target.value)}
+            />
+
+            <label className="border-theme-border bg-theme-card flex min-h-14 items-start gap-3 rounded-xl border p-3">
+              <input
+                type="checkbox"
+                checked={deleteAcknowledged}
+                disabled={isDeleting}
+                onChange={(event) => setDeleteAcknowledged(event.target.checked)}
+                className="accent-theme-danger mt-0.5 size-5 shrink-0"
+              />
+              <span className="text-theme-text text-xs leading-relaxed">
+                Rozumiem, że usunięcia nie można cofnąć i że archiwizacja zachowałaby dane.
+              </span>
+            </label>
+
+            {deleteError && <FeedbackBanner feedback={{ type: "error", text: deleteError }} />}
+
+            <Button
+              type="button"
+              disabled={
+                isDeleting || deleteConfirmation !== initialTrip.name || !deleteAcknowledged
+              }
+              className="bg-theme-danger hover:bg-theme-danger/90 text-white"
+              onClick={() => void deleteTripPermanently()}
+            >
+              <Trash2 size={17} />
+              {isDeleting ? "Usuwanie całego wyjazdu…" : "Trwale usuń cały wyjazd"}
+            </Button>
+          </div>
+        </ResponsiveDialog>
       </SettingsPage>
     );
   }

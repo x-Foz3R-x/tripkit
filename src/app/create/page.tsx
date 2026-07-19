@@ -11,30 +11,8 @@ import { StepAdmin } from "~/components/modules/trip-creator/step-admin";
 import { StepMembers } from "~/components/modules/trip-creator/step-members";
 import { StepTeams } from "~/components/modules/trip-creator/step-teams";
 import { StepReview } from "~/components/modules/trip-creator/step-review";
-import {
-  DEFAULT_DASHBOARD_WIDGETS,
-  DEFAULT_TRIP_MODULES,
-  type DashboardWidgetKey,
-  type TripModules,
-} from "~/lib/trip-config";
-import type { PackingPresetKey } from "~/lib/packing";
-
-export interface TripFormData {
-  name: string;
-  dateRange: { from: Date | undefined; to: Date | undefined };
-  destinationName: string;
-  destinationAddress: string;
-  destinationMapUrl: string;
-  playlistUrl: string;
-  modules: TripModules;
-  dashboardWidgets: DashboardWidgetKey[];
-  adminName: string;
-  adminPin: string;
-  members: string[];
-  teams: { id: string; name: string; color: string }[];
-  memberAssignments: Record<string, string>;
-  packingPresets: PackingPresetKey[];
-}
+import type { TripFormData } from "~/components/modules/trip-creator";
+import { DEFAULT_DASHBOARD_WIDGETS, DEFAULT_TRIP_MODULES } from "~/lib/trip-config";
 
 const INITIAL_DATA: TripFormData = {
   name: "",
@@ -53,7 +31,7 @@ const INITIAL_DATA: TripFormData = {
   packingPresets: ["essentials"],
 };
 
-export default function TripCreator({ onCancel }: { onCancel: () => void }) {
+export default function TripCreator() {
   const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
   const [formData, setFormData] = useState<TripFormData>(INITIAL_DATA);
@@ -113,6 +91,10 @@ export default function TripCreator({ onCancel }: { onCancel: () => void }) {
 
   const next = () => setStepIndex((index) => Math.min(index + 1, steps.length - 1));
   const back = () => setStepIndex((index) => Math.max(index - 1, 0));
+  const cancel = () => {
+    announceNavigationStart();
+    router.push("/");
+  };
 
   return (
     <div className="animate-fade-in flex min-h-dvh w-full flex-col items-center px-4 py-6 sm:justify-center">
@@ -138,7 +120,7 @@ export default function TripCreator({ onCancel }: { onCancel: () => void }) {
         </div>
 
         {currentStep === "basics" && (
-          <StepBasics data={formData} setData={setFormData} onNext={next} onCancel={onCancel} />
+          <StepBasics data={formData} setData={setFormData} onNext={next} onCancel={cancel} />
         )}
         {currentStep === "modules" && (
           <StepModules data={formData} setData={setFormData} onNext={next} onBack={back} />

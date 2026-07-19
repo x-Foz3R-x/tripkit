@@ -742,6 +742,14 @@ export type Database = {
         };
         Returns: string;
       };
+      delete_trip_permanently: {
+        Args: {
+          p_confirmation_name: string;
+          p_deleted_by: string;
+          p_trip_id: string;
+        };
+        Returns: undefined;
+      };
       complete_game_challenge: {
         Args: {
           p_completed_by: string;
