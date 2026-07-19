@@ -52,3 +52,12 @@ export function rememberTrip(trip: Omit<SavedTrip, "lastVisitedAt">) {
     // Brak dostępu do localStorage nie powinien blokować wejścia do wyjazdu.
   }
 }
+
+export function forgetSavedTrip(urlKey: string) {
+  try {
+    const nextSavedTrips = getSavedTrips().filter((savedTrip) => savedTrip.urlKey !== urlKey);
+    setAppStorageItem(STORAGE_KEY, JSON.stringify(nextSavedTrips));
+  } catch {
+    // Brak dostępu do localStorage nie może blokować usunięcia wyjazdu z serwera.
+  }
+}

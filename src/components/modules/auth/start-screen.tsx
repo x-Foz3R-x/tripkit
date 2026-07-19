@@ -12,7 +12,6 @@ import { getSavedTrips, type SavedTrip } from "~/lib/saved-trips";
 
 interface StartScreenProps {
   initialError?: string | null;
-  onCreateNew: () => void;
   returnTo?: string | null;
 }
 
@@ -25,7 +24,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 const INITIAL_TRIP_FORM_STATE: TripFormState = { error: null };
 
-export function StartScreen({ initialError, onCreateNew, returnTo }: StartScreenProps) {
+export function StartScreen({ initialError, returnTo }: StartScreenProps) {
   const [tripPin, setTripPin] = useState("");
   const [savedTrips, setSavedTrips] = useState<SavedTrip[]>([]);
   const [state, formAction, isPending] = useActionState(
@@ -92,13 +91,12 @@ export function StartScreen({ initialError, onCreateNew, returnTo }: StartScreen
           </Button>
         </form>
 
-        <button
-          type="button"
-          onClick={onCreateNew}
+        <Link
+          href="/create"
           className="text-theme-muted hover:text-theme-text mt-4 text-[11px] font-bold tracking-widest uppercase underline decoration-dashed underline-offset-4 transition-colors"
         >
           Stwórz nowy wyjazd
-        </button>
+        </Link>
 
         {savedTrips.length > 0 && (
           <section className="flex w-full flex-col gap-3 pt-2 text-left">

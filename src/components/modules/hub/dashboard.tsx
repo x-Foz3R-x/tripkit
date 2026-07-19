@@ -268,7 +268,7 @@ export function Dashboard({
               return (
                 <CompactWidget
                   key={widget}
-                  href={`/t/${urlKey}/gameplay?view=challenges`}
+                  href={`/t/${urlKey}/gameplay/challenges`}
                   icon={Sparkles}
                   label="Wyzwania"
                   value={count === 0 ? "Cisza" : String(count)}
@@ -289,7 +289,7 @@ export function Dashboard({
               return (
                 <CompactWidget
                   key={widget}
-                  href={`/t/${urlKey}/gameplay?view=polls`}
+                  href={`/t/${urlKey}/gameplay/polls`}
                   icon={Vote}
                   label="Głosowania"
                   value={count === 0 ? "Spokój" : String(count)}
@@ -303,7 +303,7 @@ export function Dashboard({
               return (
                 <CompactWidget
                   key={widget}
-                  href={`/t/${urlKey}/gameplay?view=wheel`}
+                  href={`/t/${urlKey}/gameplay/wheel`}
                   icon={Dices}
                   label="Koło fortuny"
                   value="Losuj"

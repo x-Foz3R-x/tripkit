@@ -22,6 +22,10 @@ export type GameplayActionResult = { ok: true } | { ok: false; error: string };
 
 function refreshGameplay(tripKey: string) {
   revalidatePath(`/t/${tripKey}/gameplay`);
+  revalidatePath(`/t/${tripKey}/gameplay/scores`);
+  revalidatePath(`/t/${tripKey}/gameplay/challenges`);
+  revalidatePath(`/t/${tripKey}/gameplay/polls`);
+  revalidatePath(`/t/${tripKey}/gameplay/wheel`);
   revalidatePath(`/t/${tripKey}`);
 }
 

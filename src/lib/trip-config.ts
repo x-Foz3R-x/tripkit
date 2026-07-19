@@ -66,7 +66,7 @@ export const TRIP_MODULES = [
     name: "Misje",
     shortName: "Misje",
     description: "Wyzwania i zadania dla uczestników.",
-    href: "/quests",
+    href: "/gameplay/challenges",
   },
 ] as const satisfies ReadonlyArray<{
   key: TripModuleKey;

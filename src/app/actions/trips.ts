@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createServerSupabaseClient, hasSupabaseSecretKey } from "~/lib/supabase/server";
 import { verifyPin } from "~/lib/server/pin";
-import { getTripSession, setTripSession } from "~/lib/server/trip-session";
+import { getTripSession, removeTripSession, setTripSession } from "~/lib/server/trip-session";
 import { DASHBOARD_WIDGET_KEYS, TRIP_NAVIGATION_KEYS } from "~/lib/trip-config";
 import { parseFinanceMode } from "~/lib/finances";
 import { getTripActionContext } from "~/lib/server/trip-action-context";
@@ -120,6 +120,10 @@ const setTripStatusSchema = z.object({
   tripKey: z.string().regex(/^[0-9a-f]{12}$/),
   status: z.enum(["active", "closed"]),
 });
+const deleteTripPermanentlySchema = z.object({
+  tripKey: z.string().regex(/^[0-9a-f]{12}$/),
+  confirmationName: z.string().min(2).max(80),
+});
 
 export type CreateTripInput = z.infer<typeof createTripSchema>;
 export type UpdateTripSettingsInput = z.infer<typeof updateTripSettingsSchema>;
@@ -130,6 +134,7 @@ export type UpdateTripSettingsResult = { ok: true } | { ok: false; error: string
 export type UpdateParticipantProfileResult = { ok: true } | { ok: false; error: string };
 export type ParticipantMutationResult = { ok: true } | { ok: false; error: string };
 export type TeamMutationResult = { ok: true } | { ok: false; error: string };
+export type DeleteTripResult = { ok: true } | { ok: false; error: string };
 
 async function getAdminContext(tripKey: string) {
   const context = await getTripActionContext(tripKey);
@@ -769,5 +774,54 @@ export async function setTripStatusAction(input: {
   }
 
   revalidatePath(`/t/${parsed.data.tripKey}`, "layout");
+  return { ok: true };
+}
+
+export async function deleteTripPermanentlyAction(input: {
+  tripKey: string;
+  confirmationName: string;
+}): Promise<DeleteTripResult> {
+  const parsed = deleteTripPermanentlySchema.safeParse(input);
+  if (!parsed.success) {
+    return { ok: false, error: "Wpisz dokładną nazwę wyjazdu, aby potwierdzić usunięcie." };
+  }
+
+  const context = await getAdminContext(parsed.data.tripKey);
+  if (!context) {
+    return { ok: false, error: "Tylko Zarządca może trwale usunąć wyjazd." };
+  }
+
+  const { data: trip, error: tripError } = await context.supabase
+    .from("trips")
+    .select("name")
+    .eq("id", context.session.tripId)
+    .maybeSingle();
+
+  if (tripError || !trip) {
+    return { ok: false, error: "Nie udało się potwierdzić danych wyjazdu." };
+  }
+  if (parsed.data.confirmationName !== trip.name) {
+    return { ok: false, error: "Nazwa nie jest identyczna z nazwą wyjazdu." };
+  }
+
+  const { error } = await context.supabase.rpc("delete_trip_permanently", {
+    p_trip_id: context.session.tripId,
+    p_deleted_by: context.session.userId!,
+    p_confirmation_name: parsed.data.confirmationName,
+  });
+
+  if (error) {
+    console.error("Błąd trwałego usuwania wyjazdu:", error);
+    return {
+      ok: false,
+      error:
+        error.code === "PGRST202"
+          ? "Brakuje migracji trwałego usuwania w Supabase."
+          : "Nie udało się usunąć wyjazdu. Żadne dane nie zostały częściowo usunięte.",
+    };
+  }
+
+  await removeTripSession(parsed.data.tripKey);
+  revalidatePath("/");
   return { ok: true };
 }

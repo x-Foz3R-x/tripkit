@@ -117,11 +117,14 @@ export function BottomNav() {
   const moreIsActive =
     pathname === `${basePath}/more` ||
     pathname === `${basePath}/settings` ||
-    pathname === `${basePath}/packing` ||
-    pathname === `${basePath}/quests`;
-  const routeIndex = navItems.findIndex(
-    (item) => !item.isMore && pathname === `${basePath}${item.suffix}`,
-  );
+    pathname === `${basePath}/packing`;
+  const routeIndex = navItems.findIndex((item) => {
+    if (item.isMore) return false;
+    const href = `${basePath}${item.suffix}`;
+    return item.suffix === ""
+      ? pathname === href
+      : pathname === href || pathname.startsWith(`${href}/`);
+  });
   const restingIndex = isMoreOpen || moreIsActive ? navItems.length - 1 : Math.max(routeIndex, 0);
   const selectedIndex = dragIndex ?? optimisticIndex ?? restingIndex;
 

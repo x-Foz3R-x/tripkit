@@ -123,8 +123,7 @@ export function GameplayScreen({
             return (
               <Link
                 key={card.view}
-                href={`/t/${tripKey}/gameplay?view=${card.view}`}
-                scroll={false}
+                href={`/t/${tripKey}/gameplay/${card.view}`}
                 className="bg-theme-card border-theme-border group relative flex min-h-44 flex-col overflow-hidden rounded-3xl border p-4 shadow-xs transition active:scale-98"
               >
                 <span
@@ -157,7 +156,6 @@ export function GameplayScreen({
       <header className="px-1 pt-1">
         <Link
           href={`/t/${tripKey}/gameplay`}
-          scroll={false}
           className="text-theme-muted hover:text-theme-text mb-4 inline-flex min-h-11 items-center gap-2 text-sm font-bold transition"
         >
           <ArrowLeft size={18} /> Stół rozgrywki

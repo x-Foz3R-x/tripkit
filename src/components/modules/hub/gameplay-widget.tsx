@@ -84,7 +84,7 @@ export function GameplayWidget({ insight }: { insight: DashboardInsights["scoreb
           </h2>
         </div>
         <Link
-          href={`/t/${urlKey}/gameplay?view=polls`}
+          href={`/t/${urlKey}/gameplay/polls`}
           className="text-theme-muted flex size-10 shrink-0 items-center justify-center rounded-full"
           aria-label="Otwórz całą Rozgrywkę"
         >
