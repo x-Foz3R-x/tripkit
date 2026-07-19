@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import { ArrowLeft } from "lucide-react";
 import { useMediaQuery } from "~/hooks/use-media-query";
 import {
   Dialog,
@@ -23,6 +24,7 @@ interface DrawerDialogProps {
   setIsOpen: (open: boolean) => void;
   title?: string;
   description?: string;
+  onBack?: () => void;
   children: React.ReactNode;
 }
 
@@ -31,6 +33,7 @@ export function ResponsiveDialog({
   setIsOpen,
   title,
   description,
+  onBack,
   children,
 }: DrawerDialogProps) {
   const isDesktop = useMediaQuery("(min-width: 768px)");
@@ -38,11 +41,18 @@ export function ResponsiveDialog({
   if (isDesktop) {
     return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="bg-theme-bg text-theme-text border-white/10 p-5 outline-none sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{title}</DialogTitle>
-            {description && <DialogDescription>{description}</DialogDescription>}
-          </DialogHeader>
+        <DialogContent className="bg-theme-bg text-theme-text border-theme-border p-5 outline-hidden sm:max-w-lg">
+          {(title ?? description ?? onBack) && (
+            <div className="flex items-start gap-3">
+              {onBack && <BackButton onClick={onBack} />}
+              {(title ?? description) && (
+                <DialogHeader className="min-w-0 flex-1">
+                  {title && <DialogTitle>{title}</DialogTitle>}
+                  {description && <DialogDescription>{description}</DialogDescription>}
+                </DialogHeader>
+              )}
+            </div>
+          )}
           {children}
         </DialogContent>
       </Dialog>
@@ -57,17 +67,37 @@ export function ResponsiveDialog({
       repositionInputs={false}
       direction="bottom"
     >
-      <DrawerContent className="bg-theme-bg pb-safe border-t border-white/10 text-white outline-none">
+      <DrawerContent className="bg-theme-bg pb-safe border-theme-border text-theme-text border-t outline-hidden">
         <div className="" />
 
-        {(title ?? description) && (
+        {(title ?? description ?? onBack) && (
           <DrawerHeader className="text-left">
-            {title && <DrawerTitle>{title}</DrawerTitle>}
-            {description && <DrawerDescription>{description}</DrawerDescription>}
+            <div className="flex items-start gap-3">
+              {onBack && <BackButton onClick={onBack} />}
+              {(title ?? description) && (
+                <div className="min-w-0 flex-1">
+                  {title && <DrawerTitle>{title}</DrawerTitle>}
+                  {description && <DrawerDescription>{description}</DrawerDescription>}
+                </div>
+              )}
+            </div>
           </DrawerHeader>
         )}
         <div className="max-h-[75dvh] overflow-y-auto p-6">{children}</div>
       </DrawerContent>
     </Drawer>
+  );
+}
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="border-theme-border text-theme-muted hover:text-theme-text flex size-11 shrink-0 items-center justify-center rounded-full border transition"
+      aria-label="Wróć"
+    >
+      <ArrowLeft size={19} />
+    </button>
   );
 }

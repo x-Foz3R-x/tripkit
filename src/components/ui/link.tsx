@@ -5,12 +5,13 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "~/lib/utils";
 
 export const linkVariants = cva(
-  "group relative inline-flex w-fit select-none items-center justify-center whitespace-nowrap transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-theme-primary/50 disabled:pointer-events-none disabled:opacity-50",
+  "group relative inline-flex w-fit select-none items-center justify-center whitespace-nowrap transition-all duration-300 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-theme-primary/50 disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        primary: "bg-theme-primary text-white hover:bg-theme-primary/90 shadow-sm",
-        outline: "border border-white/10 text-theme-text hover:bg-white/5",
+        primary:
+          "bg-theme-primary text-theme-primary-foreground hover:bg-theme-primary-hover active:bg-theme-primary-active shadow-xs",
+        outline: "border-theme-border text-theme-text hover:bg-theme-card border",
         unset: "",
       },
       size: {
