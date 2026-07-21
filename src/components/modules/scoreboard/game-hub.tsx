@@ -17,6 +17,7 @@ import {
   type GameplayActionResult,
 } from "~/app/actions/gameplay";
 import { runClientAction } from "~/lib/client-action";
+import {cn} from "~/lib/utils";
 import { useTripRoute } from "~/providers/trip-route-provider";
 import type { Database } from "~/types/database";
 
@@ -322,7 +323,7 @@ export function GameHub({
                       <span className="text-theme-muted block text-[9px] font-bold tracking-wider uppercase">
                         {poll.status === "open" ? "Głosowanie trwa" : "Zamknięte"}
                       </span>
-                      <strong className="font-heading text-theme-text mt-0.5 block truncate text-lg font-semibold">
+                      <strong className={cn("font-heading text-theme-text mt-0.5 block text-lg font-semibold", poll.status !== "open" && "truncate")}>
                         {poll.question}
                       </strong>
                     </span>
